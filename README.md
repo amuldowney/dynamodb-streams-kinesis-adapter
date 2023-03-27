@@ -15,6 +15,9 @@
 
 ## Release Notes
 
+### Latest Release (v1.6.0a)
+* Upgrades DynamoClient to awssdk V2
+
 ### Latest Release (v1.6.0)
 * Upgrades Amazon Kinesis Client Library (KCL) to version 1.14.9. Customers can now use DynamoDB Streams Adapter with KCL version 1.14.9. However, DynamoDB Streams Adapter does not inherit performance optimizations like support for child shards, shard synchronization, deferred lease clean-up available in KCL.
 * Fixes the [bug](https://github.com/awslabs/dynamodb-streams-kinesis-adapter/issues/40) which was causing errors in DynamoDB Streams Adapter with KCL version 1.14.0.

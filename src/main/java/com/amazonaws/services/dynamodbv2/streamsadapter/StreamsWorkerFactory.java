@@ -5,18 +5,26 @@
  */
 package com.amazonaws.services.dynamodbv2.streamsadapter;
 
+import java.net.URI;
 import java.util.concurrent.ExecutorService;
 
+import software.amazon.awssdk.services.kinesis.coordinator.Scheduler;
+import software.amazon.kinesis.common.ConfigsBuilder;
 import com.amazonaws.ClientConfiguration;
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.client.builder.AwsClientBuilder;
-import com.amazonaws.regions.Regions;
+//import com.amazonaws.auth.AWSCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+//import com.amazonaws.client.builder.AwsClientBuilder;
+import software.amazon.awssdk.awscore.client.builder.AwsClientBuilder;
+//import com.amazonaws.regions.Regions;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.regions.Region;
 import com.amazonaws.services.cloudwatch.AmazonCloudWatch;
 import com.amazonaws.services.cloudwatch.AmazonCloudWatchClient;
 import com.amazonaws.services.cloudwatch.AmazonCloudWatchClientBuilder;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClientBuilder;
+import software.amazon.awssdk.services.dynamodb.DynamoDB
+//import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.streamsadapter.leases.StreamsLeaseTaker;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessorFactory;
 
@@ -53,12 +61,12 @@ public class StreamsWorkerFactory {
         AmazonDynamoDBStreamsAdapterClient streamsClient = new AmazonDynamoDBStreamsAdapterClient(
             config.getKinesisCredentialsProvider(),
             config.getKinesisClientConfiguration());
-        AmazonDynamoDB dynamoDBClient = createClient(AmazonDynamoDBClientBuilder.standard(),
-            config.getDynamoDBCredentialsProvider(),
-            config.getDynamoDBClientConfiguration(),
-            config.getDynamoDBEndpoint(),
-            config.getRegionName());
-        KinesisClientLeaseManager kinesisClientLeaseManager = new KinesisClientLeaseManager(config.getTableName(), dynamoDBClient, config.getBillingMode());
+        AmazonDynamoDB dynamoDBClient = createClient(DynamoDbClientBuilder.standard(),
+            config.getDynamoDBCredentialsProvider(),//ConfigsBuilder
+            config.getDynamoDBClientConfiguration(),//ConfigsBuilder
+            config.getDynamoDBEndpoint(),//ConfigsBuilder
+            config.getRegionName());//ConfigsBuilder
+        KinesisClientLeaseManager kinesisClientLeaseManager = new KinesisClientLeaseManager(config.getTableName(), dynamoDBClient, config.getBillingMode());//ConfigsBuilder, ConfigsBuilder?? TODO find getBillingMode in v2
 
         boolean isAuditorMode = config.getShardSyncStrategyType() != ShardSyncStrategyType.PERIODIC;
 
@@ -73,13 +81,13 @@ public class StreamsWorkerFactory {
         ShardSyncer shardSyncer= new DynamoDBStreamsShardSyncer(new StreamsLeaseCleanupValidator());
         LeaderDecider leaderDecider = new StreamsDeterministicShuffleShardSyncLeaderDecider(config, kinesisClientLeaseManager);
 
-        DynamoDBStreamsPeriodicShardSyncManager dynamoDBStreamsPeriodicShardSyncManager = new DynamoDBStreamsPeriodicShardSyncManager(config.getWorkerIdentifier(),
+        DynamoDBStreamsPeriodicShardSyncManager dynamoDBStreamsPeriodicShardSyncManager = new DynamoDBStreamsPeriodicShardSyncManager(config.getWorkerIdentifier(),//ConfigsBuilder
                 leaderDecider,
                 new ShardSyncTask(dynamoDBStreamsProxy,
                         kinesisClientLeaseManager,
-                        config.getInitialPositionInStreamExtended(),
-                        config.shouldCleanupLeasesUponShardCompletion(),
-                        config.shouldIgnoreUnexpectedChildShards(),
+                        config.getInitialPositionInStreamExtended(),//RetrievalConfig
+                        config.shouldCleanupLeasesUponShardCompletion(),//LeaseManagementConfig
+                        config.shouldIgnoreUnexpectedChildShards(),//LeaseManagementConfig
                         0 /* shardSyncTaskIdleTimeMillis*/,
                         shardSyncer,
                         null /*latestShards*/),
@@ -87,8 +95,8 @@ public class StreamsWorkerFactory {
                 kinesisClientLeaseManager,
                 dynamoDBStreamsProxy,
                 isAuditorMode,
-                config.getLeasesRecoveryAuditorExecutionFrequencyMillis(),
-                config.getLeasesRecoveryAuditorInconsistencyConfidenceThreshold());
+                config.getLeasesRecoveryAuditorExecutionFrequencyMillis(),//LeaseManagementConfig? TODO find
+                config.getLeasesRecoveryAuditorInconsistencyConfidenceThreshold());//LeaseManagementConfig? TODO find
 
         return new Worker
             .Builder()
@@ -101,10 +109,10 @@ public class StreamsWorkerFactory {
             .shardConsumerFactory(new DynamoDBStreamsShardConsumerFactory())
             .kinesisProxy(dynamoDBStreamsProxy)
             .shardSyncer(shardSyncer)
-            .shardPrioritization(config.getShardPrioritizationStrategy())
+            .shardPrioritization(config.getShardPrioritizationStrategy())//CoordinatorConfig
             .leaseManager(kinesisClientLeaseManager)
-            .leaseTaker(new StreamsLeaseTaker<>(kinesisClientLeaseManager, config.getWorkerIdentifier(), config.getFailoverTimeMillis())
-                    .maxLeasesForWorker(config.getMaxLeasesForWorker()))
+            .leaseTaker(new StreamsLeaseTaker<>(kinesisClientLeaseManager, config.getWorkerIdentifier(), config.getFailoverTimeMillis())//ConfigsBuilder, LeaseManagementConfig
+                    .maxLeasesForWorker(config.getMaxLeasesForWorker()))//LeaseManagementConfig
             .leaderDecider(leaderDecider)
             .build();
     }
@@ -458,6 +466,7 @@ public class StreamsWorkerFactory {
             .build();
     }
 
+
     private static DynamoDBStreamsProxy getDynamoDBStreamsProxy(KinesisClientLibConfiguration config,
         AmazonDynamoDBStreamsAdapterClient streamsClient) {
         return new DynamoDBStreamsProxy.Builder(
@@ -476,26 +485,28 @@ public class StreamsWorkerFactory {
      * @param region The region name for the service.
      */
     static private <R, T extends AwsClientBuilder<T, R>> R createClient(final T builder,
-        final AWSCredentialsProvider credentialsProvider,
-        final ClientConfiguration clientConfiguration,
+        final AwsCredentialsProvider credentialsProvider,
+        final ClientOverrideConfiguration clientConfiguration,
         final String endpointUrl,
         final String region) {
         if (credentialsProvider != null) {
-            builder.withCredentials(credentialsProvider);
+            builder.credentialsProvider(credentialsProvider);
         }
         if (clientConfiguration != null) {
-            builder.withClientConfiguration(clientConfiguration);
+            //TODO check https://github.com/aws/aws-sdk-java-v2/blob/master/docs/LaunchChangelog.md#13-sdk-client-configuration
+            //for proxy config as well
+            builder.overrideConfiguration(clientConfiguration);
         }
         if (!StringUtils.isNullOrEmpty(endpointUrl)) {
             LOG.warn("Received configuration for endpoint as " + endpointUrl + ", and region as "
                 + region + ".");
-            builder.withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(endpointUrl, region));
+            builder.endpointOverride(URI.create(endpointUrl));
         } else if (!StringUtils.isNullOrEmpty(region)) {
             LOG.warn("Received configuration for region as " + region + ".");
-            builder.withRegion(region);
+            builder.region(Region.of(region));
         } else {
             LOG.warn("No configuration received for endpoint and region, will default region to us-east-1");
-            builder.withRegion(Regions.US_EAST_1);
+            builder.region(Region.US_EAST_1);
         }
         return builder.build();
     }
