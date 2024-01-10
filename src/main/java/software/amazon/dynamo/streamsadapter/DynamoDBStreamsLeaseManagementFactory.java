@@ -72,8 +72,6 @@ public class DynamoDBStreamsLeaseManagementFactory extends DynamoDBLeaseManageme
         this.getExecutorService(),
         //todo need the deletedstreamlistprovider?
         new DynamoDBStreamsShardSyncer(new StreamsLeaseCleanupValidator()),
-        //new HierarchicalShardSyncer(isMultiStreamMode, streamConfig.streamIdentifier().toString(),
-        //    deletedStreamListProvider),
         metricsFactory);
   }
 }

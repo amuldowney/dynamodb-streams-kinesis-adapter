@@ -5,13 +5,12 @@
  */
 package software.amazon.dynamo.streamsadapter.model;
 
-import com.amazonaws.services.dynamodbv2.model.GetShardIteratorRequest;
 import com.amazonaws.services.dynamodbv2.model.ShardIteratorType;
 
 /**
  * Container for the parameters to the GetShardIterator operation.
  */
-public class GetShardIteratorRequestAdapter {
+public class GetShardIteratorRequestMapper {
     // Evaluate each ShardIteratorType toString() only once.
     private static final String SHARD_ITERATOR_TYPE_DYNAMODB_AT_SEQUENCE_NUMBER = ShardIteratorType.AT_SEQUENCE_NUMBER.toString();
     private static final String SHARD_ITERATOR_TYPE_DYNAMODB_AFTER_SEQUENCE_NUMBER = ShardIteratorType.AFTER_SEQUENCE_NUMBER.toString();

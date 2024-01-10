@@ -8,13 +8,12 @@ package software.amazon.dynamo.streamsadapter.model;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.services.dynamodb.model.Record;
 
 /**
  * A single update notification of a DynamoDB Stream, adapted for use
@@ -29,30 +28,29 @@ public class RecordMapper {
     public static final Charset defaultCharset = StandardCharsets.UTF_8;
 
     private static final ObjectMapper MAPPER = new RecordObjectMapper();
+    private static final ObjectMapper MAPPER_2 = new RecordObjectMapper2();
 
-    public static software.amazon.awssdk.services.kinesis.model.Record convert(software.amazon.awssdk.services.dynamodb.model.Record record, boolean generateRecordDataBytes) {
+    public static software.amazon.awssdk.services.kinesis.model.Record convert(Record record, boolean generateRecordDataBytes) {
         return software.amazon.awssdk.services.kinesis.model.Record.builder()
             .sequenceNumber(record.dynamodb().sequenceNumber())
-            .data( getData(record, generateRecordDataBytes))
+            .data(getData(record, generateRecordDataBytes))
             .partitionKey(null)
             .approximateArrivalTimestamp(record.dynamodb().approximateCreationDateTime())
             .build();
     }
 
-    //todo might need to keep the internal object here so we can cast it appropriately in the stream processor
-
     /**
-     * This method returns JSON serialized {@link Record} object. However, This is not the best to use the object
-     * It is recommended to get an object using {@link #getInternalObject()} and cast appropriately.
+     * This method returns JSON serialized {@link Record} object.
      *
      * @return JSON serialization of {@link Record} object. JSON contains only non-null
-     * fields of {@link com.amazonaws.services.dynamodbv2.model.Record}. It returns null if serialization fails.
+     * fields of {@link Record}. It returns null if serialization fails.
      */
-    private static SdkBytes getData(software.amazon.awssdk.services.dynamodb.model.Record record, boolean generateDataBytes) {
+    private static SdkBytes getData(Record record, boolean generateDataBytes) {
         ByteBuffer data;
             if (generateDataBytes) {
                 try {
                     data = ByteBuffer.wrap(MAPPER.writeValueAsString(record).getBytes(defaultCharset));
+                    //data = ByteBuffer.wrap(MAPPER.readValue(record).getBytes(defaultCharset));
                 } catch (JsonProcessingException e) {
                     final String errorMessage = "Failed to serialize stream record to JSON";
                     LOG.error(errorMessage, e);

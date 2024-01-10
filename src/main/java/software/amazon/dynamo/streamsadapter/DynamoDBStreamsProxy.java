@@ -45,10 +45,6 @@ import software.amazon.kinesis.leases.ShardDetector;
  */
 public class DynamoDBStreamsProxy implements ShardDetector {
     private static final Log LOG = LogFactory.getLog(DynamoDBStreamsProxy.class);
-
-    private static final Set<ShardIteratorType> EXPECTED_ITERATOR_TYPES = EnumSet
-        .of(ShardIteratorType.AT_SEQUENCE_NUMBER, ShardIteratorType.AFTER_SEQUENCE_NUMBER);
-
     private static final long DEFAULT_DESCRIBE_STREAM_BACKOFF_MILLIS = 1000L;
     private static final int DEFAULT_DESCRIBE_STREAM_RETRY_TIMES = 50;
 

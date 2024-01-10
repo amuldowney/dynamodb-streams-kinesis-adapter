@@ -5,16 +5,13 @@
  */
 package software.amazon.dynamo.streamsadapter.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.Record;
-import com.amazonaws.services.dynamodbv2.model.StreamRecord;
-import com.amazonaws.services.dynamodbv2.model.StreamViewType;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -29,6 +26,11 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.deser.std.DateDeserializers.DateDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.DateSerializer;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.Identity;
+import software.amazon.awssdk.services.dynamodb.model.StreamRecord;
+import software.amazon.awssdk.services.dynamodb.model.Record;
+import software.amazon.awssdk.services.dynamodb.model.StreamViewType;
 
 public class RecordObjectMapper extends ObjectMapper {
     public static final String L = "L";
@@ -50,6 +52,7 @@ public class RecordObjectMapper extends ObjectMapper {
     public static final String KEYS = "Keys";
     public static final String AWS_REGION = "awsRegion";
     public static final String DYNAMODB = "dynamodb";
+    public static final String USER_IDENTITY = "userIdentity";
     public static final String EVENT_ID = "eventID";
     public static final String EVENT_NAME = "eventName";
     public static final String EVENT_SOURCE = "eventSource";
@@ -73,9 +76,9 @@ public class RecordObjectMapper extends ObjectMapper {
         // Don't serialize things that are null
         this.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
-        this.addMixIn(AttributeValue.class, AttributeValueMixIn.class);
-        this.addMixIn(Record.class, RecordMixIn.class);
+        this.addMixIn(Record.class, DynamoRecordMixIn.class);
         this.addMixIn(StreamRecord.class, StreamRecordMixIn.class);
+        this.addMixIn(AttributeValue.class, AttributeValueMixIn.class);
     }
 
     /*
@@ -99,19 +102,7 @@ public class RecordObjectMapper extends ObjectMapper {
     }
 
 
-    private static abstract class RecordMixIn {
-        @JsonProperty(AWS_REGION)
-        public abstract String getAwsRegion();
-
-        @JsonProperty(AWS_REGION)
-        public abstract void setAwsRegion(String awsRegion);
-
-        @JsonProperty(DYNAMODB)
-        public abstract StreamRecord getDynamodb();
-
-        @JsonProperty(DYNAMODB)
-        public abstract void setDynamodb(StreamRecord dynamodb);
-
+    private static abstract class DynamoRecordMixIn {
         @JsonProperty(EVENT_ID)
         public abstract String getEventID();
 
@@ -124,17 +115,36 @@ public class RecordObjectMapper extends ObjectMapper {
         @JsonProperty(EVENT_NAME)
         public abstract void setEventName(String eventName);
 
+        @JsonProperty(EVENT_VERSION)
+        public abstract String getEventVersion();
+
+        @JsonProperty(EVENT_VERSION)
+        public abstract void setEventVersion(String eventVersion);
+
         @JsonProperty(EVENT_SOURCE)
         public abstract String getEventSource();
 
         @JsonProperty(EVENT_SOURCE)
         public abstract void setEventSource(String eventSource);
 
-        @JsonProperty(EVENT_VERSION)
-        public abstract String getEventVersion();
+        @JsonProperty(AWS_REGION)
+        public abstract String getAwsRegion();
 
-        @JsonProperty(EVENT_VERSION)
-        public abstract void setEventVersion(String eventVersion);
+        @JsonProperty(AWS_REGION)
+        public abstract void setAwsRegion(String awsRegion);
+
+        @JsonProperty(DYNAMODB)
+        public abstract StreamRecord getDynamodb();
+
+        @JsonProperty(DYNAMODB)
+        public abstract void setDynamodb(StreamRecord dynamodb);
+
+        @JsonIgnore
+        public abstract Identity getUserIdentity();
+
+        //@JsonProperty(USER_IDENTITY)
+        @JsonIgnore
+        public abstract void setUserIdentity(Identity userIdentity);
     }
 
 

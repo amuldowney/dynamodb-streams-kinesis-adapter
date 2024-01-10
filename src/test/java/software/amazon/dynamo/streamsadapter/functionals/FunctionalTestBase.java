@@ -5,7 +5,6 @@
  */
 package software.amazon.dynamo.streamsadapter.functionals;
 
-import com.amazonaws.auth.BasicAWSCredentials;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -14,15 +13,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.After;
 import org.junit.Before;
-//
-//import com.amazonaws.auth.AWSCredentialsProvider;
-//import com.amazonaws.auth.BasicAWSCredentials;
-//import com.amazonaws.internal.StaticCredentialsProvider;
-//import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-//import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
+
 import com.amazonaws.services.dynamodbv2.local.embedded.DynamoDBEmbedded;
 import com.amazonaws.services.dynamodbv2.local.shared.access.AmazonDynamoDBLocal;
-//import com.amazonaws.services.dynamodbv2.model.DeleteTableRequest;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -36,9 +29,6 @@ import software.amazon.dynamo.streamsadapter.util.TestRecordProcessorFactory;
 import software.amazon.dynamo.streamsadapter.util.TestUtil;
 import software.amazon.kinesis.coordinator.KinesisClientLibConfiguration;
 import software.amazon.kinesis.coordinator.Scheduler;
-//import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration;
-//import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
-//import com.amazonaws.services.kinesis.metrics.impl.NullMetricsFactory;
 
 /**
  * This base class sets up DynamoDB, Kinesis Adapter and DynamoDB streams clients used by a KCL worker operating on DynamoDB
@@ -63,9 +53,6 @@ public abstract class FunctionalTestBase {
 
     private static String accessKeyId = "KCLIntegTest";
     private static String secretAccessKey = "dummy";
-
-    protected static String serviceName = "dynamodb";
-    protected static String dynamodbEndpoint = "dummyEndpoint";
 
     protected static String srcTable = "kcl-integ-test-src";
     protected static String destTable = "kcl-integ-test-dest";

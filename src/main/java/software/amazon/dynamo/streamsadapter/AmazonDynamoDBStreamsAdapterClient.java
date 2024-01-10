@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 package software.amazon.dynamo.streamsadapter;
-import java.time.Instant;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
@@ -18,20 +17,14 @@ import software.amazon.awssdk.services.dynamodb.model.GetShardIteratorRequest;
 import software.amazon.awssdk.services.dynamodb.model.Shard;
 import software.amazon.awssdk.services.dynamodb.model.StreamDescription;
 import software.amazon.awssdk.services.dynamodb.model.TrimmedDataAccessException;
-import software.amazon.awssdk.services.kinesis.model.ConsumerDescription;
-import software.amazon.awssdk.services.kinesis.model.DescribeStreamConsumerRequest;
-import software.amazon.awssdk.services.kinesis.model.DescribeStreamConsumerResponse;
 import software.amazon.awssdk.services.kinesis.model.DescribeStreamSummaryRequest;
 import software.amazon.awssdk.services.kinesis.model.DescribeStreamSummaryResponse;
-import software.amazon.awssdk.services.kinesis.model.SubscribeToShardRequest;
-import software.amazon.awssdk.services.kinesis.model.SubscribeToShardResponseHandler;
 import software.amazon.dynamo.streamsadapter.model.AmazonServiceExceptionTransformer;
 import software.amazon.dynamo.streamsadapter.model.DescribeStreamRequestMapper;
 import software.amazon.dynamo.streamsadapter.model.DescribeStreamResponseMapper;
-
 import software.amazon.dynamo.streamsadapter.model.GetRecordsRequestMapper;
 import software.amazon.dynamo.streamsadapter.model.GetRecordsResponseMapper;
-import software.amazon.dynamo.streamsadapter.model.GetShardIteratorRequestAdapter;
+import software.amazon.dynamo.streamsadapter.model.GetShardIteratorRequestMapper;
 import software.amazon.dynamo.streamsadapter.model.GetShardIteratorResultAdapter;
 import software.amazon.dynamo.streamsadapter.model.ListStreamsRequestMapper;
 import software.amazon.dynamo.streamsadapter.model.ListStreamsResponseMapper;
@@ -44,8 +37,6 @@ import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 import software.amazon.awssdk.services.kinesis.model.GetRecordsResponse;
 import software.amazon.awssdk.services.kinesis.model.GetShardIteratorResponse;
 import software.amazon.awssdk.services.kinesis.model.ListStreamsResponse;
-
-import static software.amazon.awssdk.services.kinesis.model.ConsumerStatus.ACTIVE;
 
 /**
  * Client for accessing DynamoDB Streams using the Amazon Kinesis interface.
@@ -117,29 +108,6 @@ public class AmazonDynamoDBStreamsAdapterClient implements KinesisAsyncClient {
     @Override public void close() {
         internalClient.close();
     }
-
-
-
-  @Override public  CompletableFuture<Void> subscribeToShard(
-      SubscribeToShardRequest subscribeToShardRequest,
-      SubscribeToShardResponseHandler asyncResponseHandler) {
-    internalClient.
-  }
-
-  @Override public CompletableFuture<DescribeStreamConsumerResponse> describeStreamConsumer(
-      DescribeStreamConsumerRequest describeStreamConsumerRequest) {
-    return CompletableFuture.supplyAsync(() ->
-        //Since DDB Doesn't register consumers, we just return some dummy data, pointing to the streamARN as the consumerARN
-        DescribeStreamConsumerResponse.builder()
-        .consumerDescription(ConsumerDescription.builder()
-            .streamARN(describeStreamConsumerRequest.streamARN())
-            .consumerARN(describeStreamConsumerRequest.streamARN())
-            .consumerName(describeStreamConsumerRequest.consumerName())
-            .consumerStatus(ACTIVE)
-            .consumerCreationTimestamp(Instant.EPOCH)
-            .build())
-        .build());
-  }
 
     @Override
    public CompletableFuture<DescribeStreamSummaryResponse> describeStreamSummary(
@@ -265,7 +233,7 @@ public class AmazonDynamoDBStreamsAdapterClient implements KinesisAsyncClient {
     private GetShardIteratorResponse shardIterators(
         software.amazon.awssdk.services.kinesis.model.GetShardIteratorRequest getShardIteratorRequest)
         throws AwsServiceException, SdkClientException {
-        GetShardIteratorRequest adaptedRequest = GetShardIteratorRequestAdapter.convert(getShardIteratorRequest);
+        GetShardIteratorRequest adaptedRequest = GetShardIteratorRequestMapper.convert(getShardIteratorRequest);
         requestCache.addEntry(getShardIteratorRequest, adaptedRequest);
 
         try {
