@@ -47,8 +47,9 @@ public class CorrectnessTest extends FunctionalTestBase {
         LOG.info("Starting single shard KCL integration test with TRIM_HORIZON.");
 
         KinesisClientLibConfiguration workerConfig =
-            new KinesisClientLibConfiguration(leaseTable, streamId, credentials, KCL_WORKER_ID).withInitialPositionInStream(
-                InitialPositionInStream.TRIM_HORIZON);
+            new KinesisClientLibConfiguration(leaseTable, streamId, credentials, KCL_WORKER_ID)
+                .withInitialPositionInStream(InitialPositionInStream.TRIM_HORIZON)
+                .withParentShardPollIntervalMillis(10);
 
         startKCLWorker(workerConfig);
 
@@ -115,13 +116,7 @@ public class CorrectnessTest extends FunctionalTestBase {
 
         // A thread that keeps writing to the table every 2 seconds
         ScheduledExecutorService loadGeneratorService = Executors.newSingleThreadScheduledExecutor();
-        loadGeneratorService.scheduleAtFixedRate(new Runnable() {
-
-            @Override
-            public void run() {
-                insertAndUpdateItems(1);
-            }
-        }, 0/* initialDelay */, 2/* period */, TimeUnit.SECONDS);
+        loadGeneratorService.scheduleAtFixedRate(() -> insertAndUpdateItems(1), 0/* initialDelay */, 2/* period */, TimeUnit.SECONDS);
 
         while (recordProcessorFactory.getNumRecordsProcessed() < 10) {
             LOG.info("Sleep till first few records are processed");

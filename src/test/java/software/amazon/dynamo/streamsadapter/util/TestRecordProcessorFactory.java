@@ -15,30 +15,7 @@ import software.amazon.kinesis.processor.ShardRecordProcessorFactory;
  * to be created is determined by the constructor.
  */
 public class TestRecordProcessorFactory implements ShardRecordProcessorFactory {
-
-    /**
-     * The types of record processors which can be created by this factory.
-     */
-    private enum Processor {
-        REPLICATING, COUNTING
-    }
-
-
-    private Processor requestedProcessor;
-    private RecordProcessorTracker tracker;
-    private ShardRecordProcessor createdProcessor = null;
-
-    /**
-     * Using this constructor will result in the createProcessor method
-     * returning a CountingRecordProcessor.
-     *
-     * @param tracker RecordProcessorTracker to keep track of the number of
-     *                processed records per shard
-     */
-    public TestRecordProcessorFactory(RecordProcessorTracker tracker) {
-        this.tracker = tracker;
-        requestedProcessor = Processor.COUNTING;
-    }
+    private ReplicatingRecordProcessor createdProcessor = null;
 
     private String tableName;
     private DynamoDbClient dynamoDB;
@@ -54,19 +31,10 @@ public class TestRecordProcessorFactory implements ShardRecordProcessorFactory {
     public TestRecordProcessorFactory(DynamoDbClient dynamoDB, String tableName) {
         this.tableName = tableName;
         this.dynamoDB = dynamoDB;
-        requestedProcessor = Processor.REPLICATING;
     }
 
     @Override public ShardRecordProcessor shardRecordProcessor() {
-        switch (requestedProcessor) {
-            case REPLICATING:
-                createdProcessor = new ReplicatingRecordProcessor(dynamoDB, tableName);
-                break;
-          default:
-                createdProcessor = new CountingRecordProcessor(tracker);
-                break;
-        }
-
+        createdProcessor = new ReplicatingRecordProcessor(dynamoDB, tableName);
         return createdProcessor;
     }
 
@@ -79,25 +47,19 @@ public class TestRecordProcessorFactory implements ShardRecordProcessorFactory {
      * @return number of records processed by processRecords
      */
     public int getNumRecordsProcessed() {
-        if (createdProcessor == null)
+        if (createdProcessor == null) {
             return -1;
-        switch (requestedProcessor) {
-            case REPLICATING:
-                return ((ReplicatingRecordProcessor) createdProcessor).getNumRecordsProcessed();
-            default:
-                return -1;
         }
+        return createdProcessor.getNumRecordsProcessed();
+
     }
 
     public int getNumProcessRecordsCalls() {
-        if (createdProcessor == null)
+        if (createdProcessor == null) {
             return -1;
-        switch (requestedProcessor) {
-            case REPLICATING:
-                return ((ReplicatingRecordProcessor) createdProcessor).getNumProcessRecordsCalls();
-            default:
-                return -1;
         }
+        return createdProcessor.getNumProcessRecordsCalls();
+
     }
 
 }

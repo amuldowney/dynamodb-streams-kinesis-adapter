@@ -9,7 +9,6 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedList;
 
-import com.amazonaws.AmazonWebServiceRequest;
 import software.amazon.awssdk.awscore.AwsRequest;
 
 /**
@@ -60,7 +59,7 @@ public class AdapterRequestCache {
      * @param request Kinesis request
      * @return actual DynamoDB Streams request made for the associated Kinesis request
      */
-    public synchronized AwsRequest getEntry(AwsRequest request) {
+    public synchronized AwsRequest getEntry(AwsRequest request) {//todo find uses for this
         if (null == request) {
             throw new IllegalArgumentException("Request must not be null");
         }

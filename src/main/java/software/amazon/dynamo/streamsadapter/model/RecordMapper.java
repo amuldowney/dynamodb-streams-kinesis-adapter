@@ -28,12 +28,11 @@ public class RecordMapper {
     public static final Charset defaultCharset = StandardCharsets.UTF_8;
 
     private static final ObjectMapper MAPPER = new RecordObjectMapper();
-    private static final ObjectMapper MAPPER_2 = new RecordObjectMapper2();
 
-    public static software.amazon.awssdk.services.kinesis.model.Record convert(Record record, boolean generateRecordDataBytes) {
+    public static software.amazon.awssdk.services.kinesis.model.Record convert(Record record) {
         return software.amazon.awssdk.services.kinesis.model.Record.builder()
             .sequenceNumber(record.dynamodb().sequenceNumber())
-            .data(getData(record, generateRecordDataBytes))
+            .data(getData(record))
             .partitionKey(null)
             .approximateArrivalTimestamp(record.dynamodb().approximateCreationDateTime())
             .build();
@@ -45,20 +44,16 @@ public class RecordMapper {
      * @return JSON serialization of {@link Record} object. JSON contains only non-null
      * fields of {@link Record}. It returns null if serialization fails.
      */
-    private static SdkBytes getData(Record record, boolean generateDataBytes) {
+    private static SdkBytes getData(Record record) {
         ByteBuffer data;
-            if (generateDataBytes) {
                 try {
-                    data = ByteBuffer.wrap(MAPPER.writeValueAsString(record).getBytes(defaultCharset));
-                    //data = ByteBuffer.wrap(MAPPER.readValue(record).getBytes(defaultCharset));
+                    String datum = MAPPER.writeValueAsString(record);
+                    data = ByteBuffer.wrap(datum.getBytes(defaultCharset));
                 } catch (JsonProcessingException e) {
                     final String errorMessage = "Failed to serialize stream record to JSON";
                     LOG.error(errorMessage, e);
                     throw new RuntimeException(errorMessage, e);
                 }
-            } else {
-                data = ByteBuffer.wrap(new byte[0]);
-            }
         return SdkBytes.fromByteBuffer(data);
     }
 }

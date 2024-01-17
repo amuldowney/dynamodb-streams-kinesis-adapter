@@ -5,6 +5,8 @@
  */
 package software.amazon.dynamo.streamsadapter.util;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
 import java.nio.charset.Charset;
 
 import java.nio.charset.StandardCharsets;
@@ -12,6 +14,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.Record;
+import software.amazon.awssdk.utils.BinaryUtils;
 import software.amazon.dynamo.streamsadapter.model.RecordMapper;
 import software.amazon.kinesis.exceptions.InvalidStateException;
 import software.amazon.kinesis.exceptions.ShutdownException;
@@ -26,6 +30,7 @@ import software.amazon.kinesis.retrieval.KinesisClientRecord;
 public class ReplicatingRecordProcessor implements ShardRecordProcessor {
 
     private static final Log LOG = LogFactory.getLog(ReplicatingRecordProcessor.class);
+    private static final KDSRecordObjectMapper MAPPER = new KDSRecordObjectMapper();
 
     private DynamoDbClient dynamoDBClient;
     private String tableName;
@@ -49,30 +54,33 @@ public class ReplicatingRecordProcessor implements ShardRecordProcessor {
     public void processRecords(ProcessRecordsInput processRecordsInput) {
         processRecordsCallCounter++;
         for (KinesisClientRecord record : processRecordsInput.records()) {
-            String data = new String(record.data().array(), StandardCharsets.UTF_8);
+            String data = new String(BinaryUtils.copyBytesFrom(record.data()), StandardCharsets.UTF_8);
             LOG.info("Got record: " + data);
 
-            checkpointCounter += 1;//should go under the commented out work
-            if (checkpointCounter % CHECKPOINT_BATCH_SIZE == 0) {//should go under the commented out work
+            Record ddbRecord;
+            try {
+                ddbRecord = MAPPER.readValue(BinaryUtils.copyBytesFrom(record.data()));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            switch (ddbRecord.eventName()) {
+                case INSERT:
+                case MODIFY:
+                    TestUtil.putItem(dynamoDBClient, tableName, ddbRecord.dynamodb().newImage());
+                    break;
+                case REMOVE:
+                    TestUtil.deleteItem(dynamoDBClient, tableName, ddbRecord.dynamodb().keys().get("Id").n());
+                    break;
+            }
+            checkpointCounter += 1;
+            if (checkpointCounter % CHECKPOINT_BATCH_SIZE == 0) {
                 try {
                     processRecordsInput.checkpointer().checkpoint(record.sequenceNumber());
                 } catch (Exception e) {
                     e.printStackTrace();
-                }//should go under the commented out work
+                }
             }
-            throw new RuntimeException("We did it! Fix me now");
-            //if (record instanceof RecordMapper) {
-            //    com.amazonaws.services.dynamodbv2.model.Record usRecord = ((RecordMapper) record).getInternalObject();
-            //    switch (usRecord.getEventName()) {
-            //        case "INSERT":
-            //        case "MODIFY":
-            //            TestUtil.putItem(dynamoDBClient, tableName, usRecord.getDynamodb().getNewImage());
-            //            break;
-            //        case "REMOVE":
-            //            TestUtil.deleteItem(dynamoDBClient, tableName, usRecord.getDynamodb().getKeys().get("Id").getN());
-            //            break;
-            //    }
-            //}
+
         }
 
     }

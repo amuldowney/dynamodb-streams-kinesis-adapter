@@ -1,4 +1,4 @@
-package software.amazon.dynamo.streamsadapter.model;
+package software.amazon.dynamo.streamsadapter.util;
 
 import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonParser;
@@ -14,17 +14,15 @@ import java.util.Base64;
 import java.util.Base64.Decoder;
 import software.amazon.awssdk.services.dynamodb.model.Record;
 
-public class RecordObjectMapper2 extends ObjectMapper {
+public class KDSRecordObjectMapper extends ObjectMapper {
 
   private static final Decoder decoder = Base64.getDecoder();
 
-  public RecordObjectMapper2() {
+  public KDSRecordObjectMapper() {
     super();
     SimpleModule module = new SimpleModule();
     module.addDeserializer(ByteBuffer.class, new ByteBufferDeserializer());
 
-    // TODO(mgreenberg): switch to extending JsonMapper instead of ObjectMapper
-    //  which enables builder pattern and the MapperFeatures are not deprecated
     this.configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true);
     this.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     this.configure(DeserializationFeature.READ_DATE_TIMESTAMPS_AS_NANOSECONDS, false);
@@ -49,9 +47,5 @@ public class RecordObjectMapper2 extends ObjectMapper {
 
   public Record readValue(byte[] src) throws IOException {
     return readValue(src, Record.serializableBuilderClass()).build();
-  }
-
-  public com.amazonaws.services.dynamodbv2.model.Record readV2Value(byte[] src) throws IOException {
-    return readValue(src, com.amazonaws.services.dynamodbv2.model.Record.class);
   }
 }

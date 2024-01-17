@@ -5,9 +5,14 @@
  */
 package software.amazon.dynamo.streamsadapter.model;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.datatype.jsr310.deser.InstantDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.InstantSerializer;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -73,8 +78,15 @@ public class RecordObjectMapper extends ObjectMapper {
         module.addSerializer(Date.class, DateSerializer.instance);
         module.addDeserializer(Date.class, new DateDeserializer());
 
+        // Deal with (de)serializing of Instant
+        module.addSerializer(Instant.class, InstantSerializer.INSTANCE);
+        module.addDeserializer(Instant.class, InstantDeserializer.INSTANT);
+
         // Don't serialize things that are null
-        this.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        this.setSerializationInclusion(JsonInclude.Include.NON_DEFAULT);
+        this.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
+
+        this.registerModule(module);
 
         this.addMixIn(Record.class, DynamoRecordMixIn.class);
         this.addMixIn(StreamRecord.class, StreamRecordMixIn.class);
@@ -186,10 +198,10 @@ public class RecordObjectMapper extends ObjectMapper {
         public abstract void setOldImage(Map<String, AttributeValue> oldImage);
 
         @JsonProperty(APPROXIMATE_CREATION_DATE_TIME)
-        public abstract Date getApproximateCreationDateTime();
+        public abstract Instant getApproximateCreationDateTime();
 
         @JsonProperty(APPROXIMATE_CREATION_DATE_TIME)
-        public abstract void setApproximateCreationDateTime(Date approximateCreationDateTime);
+        public abstract void setApproximateCreationDateTime(Instant approximateCreationDateTime);
     }
 
 

@@ -17,7 +17,7 @@ public class GetRecordsResponseMapper {
 
     public static software.amazon.awssdk.services.kinesis.model.GetRecordsResponse convert(GetRecordsResponse internalResult, boolean generateRecordDataBytes) {
         return software.amazon.awssdk.services.kinesis.model.GetRecordsResponse.builder()
-                .records(internalResult.records().stream().map(r -> RecordMapper.convert(r, generateRecordDataBytes)).collect(java.util.stream.Collectors.toList()))
+                .records(internalResult.records().stream().map(r -> RecordMapper.convert(r)).collect(java.util.stream.Collectors.toList()))
                 .nextShardIterator(internalResult.nextShardIterator())
                 .build();
     }

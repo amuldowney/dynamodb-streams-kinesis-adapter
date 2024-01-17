@@ -7,18 +7,17 @@ package software.amazon.dynamo.streamsadapter.model;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import com.amazonaws.services.kinesis.model.StreamStatus;
+import software.amazon.awssdk.services.kinesis.model.StreamStatus;
 
 /**
  * Container for all information describing a single DynamoDB Stream.
  */
 public class StreamDescriptionMapper {
     // Evaluate each StreamStatus.toString() only once
-    private static final String STREAM_STATUS_DYNAMODB_DISABLED = com.amazonaws.services.dynamodbv2.model.StreamStatus.DISABLED.toString();
-    private static final String STREAM_STATUS_DYNAMODB_DISABLING = com.amazonaws.services.dynamodbv2.model.StreamStatus.DISABLING.toString();
-    private static final String STREAM_STATUS_DYNAMODB_ENABLED = com.amazonaws.services.dynamodbv2.model.StreamStatus.ENABLED.toString();
-    private static final String STREAM_STATUS_DYNAMODB_ENABLING = com.amazonaws.services.dynamodbv2.model.StreamStatus.ENABLING.toString();
+    private static final String STREAM_STATUS_DYNAMODB_DISABLED = software.amazon.awssdk.services.dynamodb.model.StreamStatus.DISABLED.toString();
+    private static final String STREAM_STATUS_DYNAMODB_DISABLING = software.amazon.awssdk.services.dynamodb.model.StreamStatus.DISABLING.toString();
+    private static final String STREAM_STATUS_DYNAMODB_ENABLED = software.amazon.awssdk.services.dynamodb.model.StreamStatus.ENABLED.toString();
+    private static final String STREAM_STATUS_DYNAMODB_ENABLING = software.amazon.awssdk.services.dynamodb.model.StreamStatus.ENABLING.toString();
     private static final String STREAM_STATUS_KINESIS_ACTIVE = StreamStatus.ACTIVE.toString();
     private static final String STREAM_STATUS_KINESIS_CREATING = StreamStatus.CREATING.toString();
 

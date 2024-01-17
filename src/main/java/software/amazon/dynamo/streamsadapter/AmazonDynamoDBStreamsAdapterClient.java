@@ -14,8 +14,10 @@ import java.util.List;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import software.amazon.awssdk.services.dynamodb.model.GetShardIteratorRequest;
+import software.amazon.awssdk.services.dynamodb.model.Record;
 import software.amazon.awssdk.services.dynamodb.model.Shard;
 import software.amazon.awssdk.services.dynamodb.model.StreamDescription;
+import software.amazon.awssdk.services.dynamodb.model.StreamRecord;
 import software.amazon.awssdk.services.dynamodb.model.TrimmedDataAccessException;
 import software.amazon.awssdk.services.kinesis.model.DescribeStreamSummaryRequest;
 import software.amazon.awssdk.services.kinesis.model.DescribeStreamSummaryResponse;
@@ -204,12 +206,9 @@ public class AmazonDynamoDBStreamsAdapterClient implements KinesisAsyncClient {
                 //        lastStreamRecord.approximateCreationDateTime().toEpochMilli();
                 //    final double millisBehindLatest =
                 //        Math.max(System.currentTimeMillis() - lastApproximateCreationTimestamp, 0);
-                //    IMetricsScope scope = MetricsHelper.getMetricsScope();
-                //    scope.addData(MILLIS_BEHIND_LATEST_METRIC, millisBehindLatest,
-                //        StandardUnit.Milliseconds, MetricsLevel.SUMMARY);
-                //}
-                //if (result != null && result.nextShardIterator() == null && result.getSdkResponseMetadata() != null) {
-                //    LOG.info("RequestId for getRecords which resulted in ShardEnd: " + result.getSdkResponseMetadata().getRequestId());
+                //    //IMetricsScope scope = MetricsHelper.getMetricsScope();
+                //    //scope.addData(MILLIS_BEHIND_LATEST_METRIC, millisBehindLatest,
+                //    //    StandardUnit.Milliseconds, MetricsLevel.SUMMARY);
                 //}
                 return GetRecordsResponseMapper.convert(result, generateRecordBytes);
             } catch (AwsServiceException e) {

@@ -35,6 +35,7 @@ import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
 import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
 import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
+import software.amazon.awssdk.services.dynamodb.model.SequenceNumberRange;
 import software.amazon.awssdk.services.dynamodb.model.ShardIteratorType;
 import software.amazon.awssdk.services.dynamodb.model.StreamDescription;
 import software.amazon.awssdk.services.dynamodb.model.StreamSpecification;
@@ -44,9 +45,13 @@ import software.amazon.awssdk.services.dynamodb.model.StreamViewType;
 import software.amazon.awssdk.services.dynamodb.model.UpdateTableRequest;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
+import software.amazon.awssdk.services.dynamodb.model.Shard;
+import software.amazon.dynamo.streamsadapter.model.ShardMapper;
 
 public class TestUtil {
-
+    private static final String STARTING_SEQUENCE_NUMBER = "1";
+    private static final String ENDING_SEQUENCE_NUMBER = "2";
+    private static final String NULL_SEQUENCE_NUMBER = null;
     /**
      * @return StreamId
      */
@@ -170,6 +175,47 @@ public class TestUtil {
     public static GetRecordsResponse getRecords(DynamoDbStreamsClient client, String shardIterator) {
         GetRecordsResponse result = client.getRecords(GetRecordsRequest.builder().shardIterator(shardIterator).build());
         return result;
+    }
+
+
+    public static Shard createDummyDBShard() {
+        return _createDummyShard("parentShardId", "shardId", false);
+    }
+
+        /**
+         *
+         * @param parentShardId Parent Shard ID for the created shard
+         * @param shardId Shard ID for the created shard
+         * @param closed Whether or not the shard is marked as closed (non-null end sequence number).
+         * @return
+         */
+        public static software.amazon.awssdk.services.kinesis.model.Shard createDummyShard(String parentShardId, String shardId, boolean closed) {
+            return ShardMapper.convert(_createDummyShard(parentShardId, shardId, closed));
+        }
+    private static Shard _createDummyShard(String parentShardId, String shardId, boolean closed) {
+        software.amazon.awssdk.services.dynamodb.model.Shard.Builder shard =
+            software.amazon.awssdk.services.dynamodb.model.Shard.builder()
+                .parentShardId(parentShardId)
+                .shardId(shardId);
+        if (closed) {
+            shard = shard.sequenceNumberRange(getSequenceNumberRange());
+        } else {
+            shard = shard.sequenceNumberRange(getEndNullSequenceNumberRange());
+        }
+        return shard.build();
+    }
+    private static SequenceNumberRange getSequenceNumberRange() {
+        return SequenceNumberRange.builder()
+            .startingSequenceNumber(STARTING_SEQUENCE_NUMBER)
+            .endingSequenceNumber(ENDING_SEQUENCE_NUMBER)
+            .build();
+    }
+
+    private static SequenceNumberRange getEndNullSequenceNumberRange() {
+        return SequenceNumberRange.builder()
+            .startingSequenceNumber(STARTING_SEQUENCE_NUMBER)
+            .endingSequenceNumber(NULL_SEQUENCE_NUMBER)
+            .build();
     }
 
 }

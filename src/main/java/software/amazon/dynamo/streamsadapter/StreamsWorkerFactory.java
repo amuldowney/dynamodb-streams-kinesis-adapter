@@ -34,12 +34,12 @@ public class StreamsWorkerFactory {
   private static final Log LOG = LogFactory.getLog(StreamsWorkerFactory.class);
 
   /**
-   * @param recordProcessorFactory Used to get record processor instances for processing data from shards
+   * @param shardRecordProcessorFactory Used to get record processor instances for processing data from shards
    * @param config                 Kinesis Client Library configuration
    * @param streamsClient          DynamoDB Streams Adapter Client used for fetching data
    * @param dynamoDBClient         DynamoDB client used for checkpoints and tracking leases
-   * @param metricsFactory         Metrics factory used to emit metrics
-   * @param execService            ExecutorService to use for processing records (support for multi-threaded
+   * @param cloudWatchClient         Metrics factory used to emit metrics
+   * @param executorService            ExecutorService to use for processing records (support for multi-threaded
    *                               consumption)
    * @return An instance of KCL worker injected with DynamoDB Streams specific dependencies.
    */
@@ -61,12 +61,8 @@ public class StreamsWorkerFactory {
 
     DynamoDBStreamsProxy dynamoDBStreamsProxy = getDynamoDBStreamsProxy(config, streamsClient);
 
-    HierarchicalShardSyncer shardSyncer =
-        new DynamoDBStreamsShardSyncer(new StreamsLeaseCleanupValidator());
-
     LeaseManagementConfig lmc = configsBuilder.leaseManagementConfig();
-    lmc = lmc.customShardDetectorProvider(
-        cfg -> dynamoDBStreamsProxy);//todo do we care about the stream name coming from cfg here?
+    lmc = lmc.customShardDetectorProvider(cfg -> dynamoDBStreamsProxy);
 
     DynamoDBStreamsLeaseManagementFactory dynamoDBStreamsLeaseManagementFactory =
         new DynamoDBStreamsLeaseManagementFactory(
@@ -91,7 +87,7 @@ public class StreamsWorkerFactory {
             lmc.cacheMissWarningModulus(),
             lmc.initialLeaseTableReadCapacity(),
             lmc.initialLeaseTableWriteCapacity(),
-            shardSyncer,
+            new DynamoDBStreamsShardSyncer(new StreamsLeaseCleanupValidator()),
             lmc.tableCreatorCallback(),
             lmc.dynamoDbRequestTimeout(),
             lmc.billingMode(),
@@ -109,10 +105,8 @@ public class StreamsWorkerFactory {
     //                .createShardSyncTaskManager(this.metricsFactory, streamConfig, this.deletedStreamListProvider);
     //ShardSyncTaskManager owns the shardsyncer and the refresher?
 
-    //Need custom retrieval factory to prevent fanout and lots of stream accessor calls to kinesisasycnclient (not impl'd)
 
     RetrievalConfig rc = configsBuilder.retrievalConfig();
-    //rc = rc.retrievalFactory(new DynamoDBStreamsRetrievalFactory(streamsClient));
     rc = rc.retrievalFactory(new SynchronousPrefetchingRetrievalFactory(
         rc.streamTracker().streamConfigList().get(0).streamIdentifier().streamName(),//always a single stream tracker for dynamodb streams
         streamsClient,
@@ -122,9 +116,6 @@ public class StreamsWorkerFactory {
         300,
         Duration.ofSeconds(30)
     ));
-
-    //OR
-    //rc = rc.retrievalFactory(new SynchronousBlockingRetrievalFactory())
 
     return new Scheduler(
         configsBuilder.checkpointConfig(),

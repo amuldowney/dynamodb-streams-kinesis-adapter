@@ -5,10 +5,8 @@
  */
 package software.amazon.dynamo.streamsadapter.model;
 
-import com.amazonaws.services.kinesis.model.DescribeStreamResult;
 import software.amazon.awssdk.services.kinesis.model.StreamMode;
 import software.amazon.awssdk.services.kinesis.model.StreamModeDetails;
-import software.amazon.awssdk.services.kinesis.model.StreamStatus;
 import software.amazon.awssdk.services.dynamodb.model.DescribeStreamResponse;
 import software.amazon.awssdk.services.kinesis.model.DescribeStreamSummaryResponse;
 import software.amazon.awssdk.services.kinesis.model.StreamDescriptionSummary;
@@ -16,7 +14,6 @@ import software.amazon.awssdk.services.kinesis.model.StreamDescriptionSummary;
 /**
  * Represents the output of a DescribeStream operation.
  */
-//todo rename to new matching class names
 public class DescribeStreamResponseMapper {
 
   public static software.amazon.awssdk.services.kinesis.model.DescribeStreamResponse convert(

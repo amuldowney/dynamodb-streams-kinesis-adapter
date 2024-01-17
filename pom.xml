@@ -23,10 +23,9 @@
     </licenses>
 
     <properties>
-        <aws-java-sdk.version>1.12.130</aws-java-sdk.version>
         <aws-java-sdkv2.version>2.17.242</aws-java-sdkv2.version>
-        <amazon-kinesis-client.version>1.14.9</amazon-kinesis-client.version>
-        <powermock.version>1.6.2</powermock.version>
+        <software-kinesis.version>2.5.4</software-kinesis.version>
+        <powermock.version>1.7.4</powermock.version>
         <aws.dynamodblocal.version>[1.12,2.0)</aws.dynamodblocal.version>
         <maven.dependency.version>3.0.0</maven.dependency.version>
         <sqlite4java.version>1.0.392</sqlite4java.version>
@@ -57,47 +56,53 @@
         <dependency>
             <groupId>software.amazon.kinesis</groupId>
             <artifactId>amazon-kinesis-client</artifactId>
-            <version>2.5.3</version>
+            <version>${software-kinesis.version}</version>
         </dependency>
 
         <!-- Amazon Kinesis Client V2 Library -->
         <dependency>
             <groupId>software.amazon.kinesis</groupId>
             <artifactId>amazon-kinesis-client-multilang</artifactId>
-            <version>2.5.3</version>
+            <version>${software-kinesis.version}</version><!--2.5.2-->
         </dependency>
 
         <!-- The AWS SDK for Java -->
-        <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk-cloudwatch</artifactId>
-            <version>${aws-java-sdk.version}</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>com.amazonaws</groupId>-->
+<!--            <artifactId>aws-java-sdk-cloudwatch</artifactId>-->
+<!--            <version>${aws-java-sdk.version}</version>-->
+<!--        </dependency>-->
 
-        <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk-dynamodb</artifactId>
-            <version>${aws-java-sdk.version}</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>com.amazonaws</groupId>-->
+<!--            <artifactId>aws-java-sdk-dynamodb</artifactId>-->
+<!--            <version>${aws-java-sdk.version}</version>-->
+<!--        </dependency>-->
 
-        <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk-kinesis</artifactId>
-            <version>${aws-java-sdk.version}</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>com.amazonaws</groupId>-->
+<!--            <artifactId>aws-java-sdk-kinesis</artifactId>-->
+<!--            <version>${aws-java-sdk.version}</version>-->
+<!--        </dependency>-->
 
-        <!-- Amazon Kinesis Client Library -->
-        <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>amazon-kinesis-client</artifactId>
-            <version>${amazon-kinesis-client.version}</version>
-        </dependency>
+<!--        &lt;!&ndash; Amazon Kinesis Client Library &ndash;&gt;-->
+<!--        <dependency>-->
+<!--            <groupId>com.amazonaws</groupId>-->
+<!--            <artifactId>amazon-kinesis-client</artifactId>-->
+<!--            <version>${amazon-kinesis-client.version}</version>-->
+<!--        </dependency>-->
 
 
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <version>2.12.7.1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+            <version>2.12.7</version>
         </dependency>
 
         <dependency>
@@ -136,7 +141,7 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.13.1</version>
+            <version>4.13.2</version>
             <scope>test</scope>
         </dependency>
 
