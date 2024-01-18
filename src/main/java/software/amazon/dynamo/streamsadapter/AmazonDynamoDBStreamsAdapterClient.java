@@ -52,8 +52,6 @@ public class AmazonDynamoDBStreamsAdapterClient implements KinesisAsyncClient {
 
     private final DynamoDbStreamsClient internalClient;
 
-    private final AdapterRequestCache requestCache = new AdapterRequestCache(REQUEST_CACHE_CAPACITY);
-
     private static final String MILLIS_BEHIND_LATEST_METRIC = "MillisBehindLatest";
 
 
@@ -118,7 +116,6 @@ public class AmazonDynamoDBStreamsAdapterClient implements KinesisAsyncClient {
             DescribeStreamRequest ddbDescribeStreamRequest = DescribeStreamRequestMapper.convert(describeStreamSummaryRequest);
 
             DescribeStreamResponse result;
-            requestCache.addEntry(describeStreamSummaryRequest, ddbDescribeStreamRequest);
             try {
                 result = internalClient.describeStream(ddbDescribeStreamRequest);
             } catch (AwsServiceException e) {
@@ -144,7 +141,6 @@ public class AmazonDynamoDBStreamsAdapterClient implements KinesisAsyncClient {
                 DescribeStreamRequestMapper.convert(describeStreamRequest);
 
             DescribeStreamResponse result;
-            requestCache.addEntry(describeStreamRequest, ddbDescribeStreamRequest);
             try {
                 result = internalClient.describeStream(ddbDescribeStreamRequest);
             } catch (AwsServiceException e) {
@@ -192,7 +188,6 @@ public class AmazonDynamoDBStreamsAdapterClient implements KinesisAsyncClient {
         return CompletableFuture.supplyAsync(() -> {
             software.amazon.awssdk.services.dynamodb.model.GetRecordsRequest requestAdapter =
                 GetRecordsRequestMapper.convert(getRecordsRequest);
-            requestCache.addEntry(getRecordsRequest, requestAdapter);
 
             try {
                 software.amazon.awssdk.services.dynamodb.model.GetRecordsResponse result =
@@ -233,7 +228,6 @@ public class AmazonDynamoDBStreamsAdapterClient implements KinesisAsyncClient {
         software.amazon.awssdk.services.kinesis.model.GetShardIteratorRequest getShardIteratorRequest)
         throws AwsServiceException, SdkClientException {
         GetShardIteratorRequest adaptedRequest = GetShardIteratorRequestMapper.convert(getShardIteratorRequest);
-        requestCache.addEntry(getShardIteratorRequest, adaptedRequest);
 
         try {
             software.amazon.awssdk.services.dynamodb.model.GetShardIteratorResponse result = internalClient.getShardIterator(adaptedRequest);
@@ -270,7 +264,6 @@ public class AmazonDynamoDBStreamsAdapterClient implements KinesisAsyncClient {
         return CompletableFuture.supplyAsync(() -> {
             software.amazon.awssdk.services.dynamodb.model.ListStreamsRequest requestAdapter =
                 ListStreamsRequestMapper.convert(listStreamsRequest);
-            requestCache.addEntry(listStreamsRequest, requestAdapter);
             try {
                 software.amazon.awssdk.services.dynamodb.model.ListStreamsResponse result =
                     internalClient.listStreams(requestAdapter);
@@ -358,5 +351,4 @@ public class AmazonDynamoDBStreamsAdapterClient implements KinesisAsyncClient {
         }
         this.skipRecordsBehavior = skipRecordsBehavior;
     }
-
 }

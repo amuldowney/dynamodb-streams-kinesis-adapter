@@ -19,6 +19,9 @@ import software.amazon.kinesis.leases.dynamodb.DynamoDBLeaseManagementFactory;
 import software.amazon.kinesis.leases.dynamodb.TableCreatorCallback;
 import software.amazon.kinesis.metrics.MetricsFactory;
 
+/** We had to reimplement DynamoDBLeaseManagementFactory to replace the ShardSyncer
+ * with DynamoDBStreamsShardSyncer
+ */
 public class DynamoDBStreamsLeaseManagementFactory extends DynamoDBLeaseManagementFactory {
   public DynamoDBStreamsLeaseManagementFactory(
       KinesisAsyncClient kinesisClient,
