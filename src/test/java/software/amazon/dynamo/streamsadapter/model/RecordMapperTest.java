@@ -21,14 +21,15 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.runner.RunWith;
-import org.mockito.internal.util.reflection.Whitebox;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
+import org.powermock.reflect.Whitebox;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.OperationType;
 import software.amazon.awssdk.services.dynamodb.model.Record;
 import software.amazon.awssdk.services.dynamodb.model.StreamRecord;
 import software.amazon.awssdk.services.dynamodb.model.StreamViewType;
+import software.amazon.awssdk.utils.BinaryUtils;
 
 @PrepareForTest({ObjectMapper.class, RecordMapper.class})
 @RunWith(PowerMockRunner.class)
@@ -76,30 +77,24 @@ public class RecordMapperTest {
 
         adapter = RecordMapper.convert(testRecord);
     }
-
-    @Test
-    public void testDoesNotGenerateBytesWhenGenerateDataBytesIsFalse() {
-        assertEquals(0, adapter.data().asByteArray().length);
-    }
-
     @Test
     public void testGetSequenceNumber() {
         String actual = adapter.sequenceNumber();
         assertEquals(TEST_STRING, actual);
     }
-    //
-    ///**
-    // * We need a custom serializer/deserializer to be able to process Record object because of the conflicts that arise
-    // * with the standard jackson mapper for fields like eventName etc.
-    // */
-    //@Test
-    //public void testGetDataDeserialized() throws JsonParseException, JsonMappingException, IOException {
-    //    Whitebox.setInternalState(RecordMapper.class, ObjectMapper.class, MAPPER);
-    //
-    //    java.nio.ByteBuffer data = adapter.data().asByteBuffer();
-    //    Record actual = MAPPER.readValue(data.array(), Record.class);
-    //    assertEquals(adapter, actual);
-    //}
+
+    /**
+     * We need a custom serializer/deserializer to be able to process Record object because of the conflicts that arise
+     * with the standard jackson mapper for fields like eventName etc.
+     */
+    @Test
+    public void testGetDataDeserialized() throws  IOException {
+        Whitebox.setInternalState(RecordMapper.class, ObjectMapper.class, MAPPER);
+
+        java.nio.ByteBuffer data = adapter.data().asByteBuffer();
+        Record actual = MAPPER.readValue(BinaryUtils.copyBytesFrom(data), Record.class);
+        assertEquals(adapter, actual);
+    }
 
 
     @Test

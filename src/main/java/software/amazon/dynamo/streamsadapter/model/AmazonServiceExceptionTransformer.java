@@ -5,6 +5,7 @@
  */
 package software.amazon.dynamo.streamsadapter.model;
 
+import javax.annotation.Nullable;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -15,7 +16,7 @@ import software.amazon.awssdk.services.dynamodb.model.InternalServerErrorExcepti
 import software.amazon.dynamo.streamsadapter.exceptions.UnableToReadMoreRecordsException;
 import software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException;
 import software.amazon.awssdk.services.dynamodb.model.TrimmedDataAccessException;
-import software.amazon.awssdk.services.kinesis.model.LimitExceededException;
+import software.amazon.awssdk.services.dynamodb.model.LimitExceededException;
 import software.amazon.awssdk.services.kinesis.model.ProvisionedThroughputExceededException;
 import software.amazon.dynamo.streamsadapter.AmazonDynamoDBStreamsAdapterClient;
 
@@ -97,15 +98,13 @@ public class AmazonServiceExceptionTransformer {
             LOG.error("Could not transform a DynamoDB AmazonServiceException to a compatible Kinesis exception", original);
             return original;
         }
-        AwsErrorDetails.Builder transformingDetailsBuilder = transforming.awsErrorDetails().toBuilder();
+        AwsErrorDetails.Builder transformingDetailsBuilder = getDetailsBuilder(transforming.awsErrorDetails());
         // Here we update the transformed exception fields with the original exception values
-        if (original.awsErrorDetails().errorCode() != null) {
+        if (original.awsErrorDetails() != null && original.awsErrorDetails().errorCode() != null) {
             transformingDetailsBuilder.errorCode(original.awsErrorDetails().errorCode());
         }
-        // Null is transformed to UNKNOWN, so a null value is impossible.
-        //transforming.setErrorType(original.getErrorType());
 
-        if (original.awsErrorDetails().serviceName() != null) {
+        if (original.awsErrorDetails() != null && original.awsErrorDetails().serviceName() != null) {
             transformingDetailsBuilder.serviceName(original.awsErrorDetails().serviceName());
         }
         //Set anything set above to the transforming builder
@@ -117,6 +116,10 @@ public class AmazonServiceExceptionTransformer {
         transforming.statusCode(original.statusCode());
         LOG.error(String.format("DynamoDB Streams exception: %s tranformed to Kinesis %s", original.getClass(), transforming.getClass()), original);
         return transforming.build();
+    }
+
+    private static AwsErrorDetails.Builder getDetailsBuilder(@Nullable AwsErrorDetails aed) {
+        return aed == null ? AwsErrorDetails.builder() : aed.toBuilder();
     }
 
     /**
@@ -139,20 +142,20 @@ public class AmazonServiceExceptionTransformer {
      * <p>
      * The following transformations are applied: <br>
      * (1) InternalServerError <br>
-     * Amazon DynamoDB Streams: {@link com.amazonaws.services.dynamodbv2.model.InternalServerErrorException} <br>
+     * Amazon DynamoDB Streams: {@link InternalServerErrorException} <br>
      * Amazon Kinesis: {@link com.amazonaws.AmazonServiceException} <br>
      * Notes: SDK relies on the 500 series StatusCode to identify that the issue was service side<br>
      * <br>
      * (2) ResourceNotFound <br>
-     * Amazon DynamoDB Streams: {@link com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException} <br>
-     * Amazon Kinesis: {@link com.amazonaws.services.kinesis.model.ResourceNotFoundException} <br>
+     * Amazon DynamoDB Streams: {@link ResourceNotFoundException} <br>
+     * Amazon Kinesis: {@link software.amazon.awssdk.services.kinesis.model.ResourceNotFoundException} <br>
      * Notes: N/A<br>
      * <br>
      * (2) ThrottlingException <br>
-     * Amazon DynamoDB Streams: {@link com.amazonaws.AmazonServiceException} with ErrorCode
+     * Amazon DynamoDB Streams: {@link AwsServiceException} with ErrorCode
      * {@value AmazonServiceExceptionTransformer#DYNAMODB_STREAMS_THROTTLING_EXCEPTION_ERROR_CODE}
      * <br>
-     * Amazon Kinesis: {@link com.amazonaws.services.kinesis.model.LimitExceededException} <br>
+     * Amazon Kinesis: {@link software.amazon.awssdk.services.kinesis.model.LimitExceededException} <br>
      * Notes: N/A<br>
      *
      * @param ase The Amazon DynamoDB Streams exception thrown by a DescribeStream call
@@ -180,33 +183,33 @@ public class AmazonServiceExceptionTransformer {
      * <p>
      * The following transformations are applied: <br>
      * (1) ExpiredIterator <br>
-     * Amazon DynamoDB Streams: {@link com.amazonaws.services.dynamodbv2.model.ExpiredIteratorException} <br>
-     * Amazon Kinesis: {@link com.amazonaws.services.kinesis.model.ExpiredIteratorException} <br>
+     * Amazon DynamoDB Streams: {@link ExpiredIteratorException} <br>
+     * Amazon Kinesis: {@link software.amazon.awssdk.services.kinesis.model.ExpiredIteratorException} <br>
      * Notes: N/A <br>
      * <br>
      * (2) InternalServerError <br>
-     * Amazon DynamoDB Streams: {@link com.amazonaws.services.dynamodbv2.model.InternalServerErrorException} <br>
-     * Amazon Kinesis: {@link com.amazonaws.AmazonServiceException} <br>
+     * Amazon DynamoDB Streams: {@link InternalServerErrorException} <br>
+     * Amazon Kinesis: {@link AwsServiceException} <br>
      * Notes: SDK relies on the 500 series StatusCode to identify that the issue was service side<br>
      * <br>
      * (3) LimitExceeded <br>
-     * Amazon DynamoDB Streams: {@link com.amazonaws.services.dynamodbv2.model.LimitExceededException} <br>
-     * Amazon Kinesis: {@link com.amazonaws.services.kinesis.model.ProvisionedThroughputExceededException} <br>
+     * Amazon DynamoDB Streams: {@link LimitExceededException} <br>
+     * Amazon Kinesis: {@link software.amazon.awssdk.services.kinesis.model.ProvisionedThroughputExceededException} <br>
      * Notes: N/A<br>
      * <br>
      * (4) ResourceNotFound <br>
-     * Amazon DynamoDB Streams: {@link com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException} <br>
-     * Amazon Kinesis: {@link com.amazonaws.services.kinesis.model.ResourceNotFoundException} <br>
+     * Amazon DynamoDB Streams: {@link ResourceNotFoundException} <br>
+     * Amazon Kinesis: {@link software.amazon.awssdk.services.kinesis.model.ResourceNotFoundException} <br>
      * Notes: N/A<br>
      * <br>
      * (5) ThrottlingException <br>
-     * Amazon DynamoDB Streams: {@link com.amazonaws.AmazonServiceException} with ErrorCode
+     * Amazon DynamoDB Streams: {@link AwsServiceException} with ErrorCode
      * {@value AmazonServiceExceptionTransformer#DYNAMODB_STREAMS_THROTTLING_EXCEPTION_ERROR_CODE}
      * <br>
-     * Amazon Kinesis: {@link com.amazonaws.services.kinesis.model.ProvisionedThroughputExceededException} <br>
+     * Amazon Kinesis: {@link software.amazon.awssdk.services.kinesis.model.ProvisionedThroughputExceededException} <br>
      * Notes: N/A<br>
      * (6) TrimmedDataAccess <br>
-     * Amazon DynamoDB Streams: {@link com.amazonaws.services.dynamodbv2.model.TrimmedDataAccessException}<br>
+     * Amazon DynamoDB Streams: {@link software.amazon.awssdk.services.dynamodb.model.TrimmedDataAccessException}<br>
      * Amazon Kinesis: N/A<br>
      * Notes: FIXME Amazon Kinesis does not communicate trimmed data; the service retrieves the oldest available records
      * for the shard and returns those as if no trimming occurred. Because no context information about the shardId or
@@ -251,24 +254,24 @@ public class AmazonServiceExceptionTransformer {
      * <p>
      * The following transformations are applied: <br>
      * (1) InternalServerError <br>
-     * Amazon DynamoDB Streams: {@link com.amazonaws.services.dynamodbv2.model.InternalServerErrorException} <br>
-     * Amazon Kinesis: {@link com.amazonaws.AmazonServiceException} <br>
+     * Amazon DynamoDB Streams: {@link InternalServerErrorException} <br>
+     * Amazon Kinesis: {@link AwsServiceException} <br>
      * Notes: SDK relies on the 500 series StatusCode to identify that the issue was service side<br>
      * <br>
      * (2) ResourceNotFound <br>
-     * Amazon DynamoDB Streams: {@link com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException} <br>
-     * Amazon Kinesis: {@link com.amazonaws.services.kinesis.model.ResourceNotFoundException} <br>
+     * Amazon DynamoDB Streams: {@link ResourceNotFoundException} <br>
+     * Amazon Kinesis: {@link software.amazon.awssdk.services.kinesis.model.ResourceNotFoundException} <br>
      * Notes: Amazon Kinesis does not differentiate TrimmedData and ResourceNotFound. In the case that data loss is not
      * acceptable, the adapter throws an {@link UnableToReadMoreRecordsException}<br>
      * <br>
      * (3) ThrottlingException <br>
-     * Amazon DynamoDB Streams: {@link com.amazonaws.AmazonServiceException} with ErrorCode
+     * Amazon DynamoDB Streams: {@link AwsServiceException} with ErrorCode
      * {@value AmazonServiceExceptionTransformer#DYNAMODB_STREAMS_THROTTLING_EXCEPTION_ERROR_CODE}
      * <br>
-     * Amazon Kinesis: {@link com.amazonaws.services.kinesis.model.ProvisionedThroughputExceededException} <br>
+     * Amazon Kinesis: {@link software.amazon.awssdk.services.kinesis.model.ProvisionedThroughputExceededException} <br>
      * Notes: N/A<br>
      * (4) TrimmedDataAccess <br>
-     * Amazon DynamoDB Streams: {@link com.amazonaws.services.dynamodbv2.model.TrimmedDataAccessException}<br>
+     * Amazon DynamoDB Streams: {@link TrimmedDataAccessException}<br>
      * Amazon Kinesis: N/A<br>
      * Notes: FIXME Amazon Kinesis does not communicate trimmed data; the service returns a valid shard iterator for the
      * oldest available records for the specified shard as if no trimming occurred. If data loss is acceptable, the
@@ -283,25 +286,25 @@ public class AmazonServiceExceptionTransformer {
         if (ase == null) {
             return ase;
         }
-        AwsServiceException.Builder transformed = null;
+        AwsServiceException.Builder transforming = null;
         if (ase instanceof InternalServerErrorException) { // (1)
-            transformed = AwsServiceException.builder().message(buildErrorMessage(ase)).cause(ase);
+            transforming = AwsServiceException.builder().message(buildErrorMessage(ase)).cause(ase);
         } else if (ase instanceof ResourceNotFoundException) { // (2)
             if (skipRecordsBehavior == AmazonDynamoDBStreamsAdapterClient.SkipRecordsBehavior.SKIP_RECORDS_TO_TRIM_HORIZON) {
-                transformed = ResourceNotFoundException.builder().message(buildErrorMessage(ase));
+                transforming = software.amazon.awssdk.services.kinesis.model.ResourceNotFoundException.builder().message(buildErrorMessage(ase));
             } else {
                 throw new UnableToReadMoreRecordsException(TRIMMED_DATA_KCL_RETRY_MESSAGE, ase);
             }
         } else if (DYNAMODB_STREAMS_THROTTLING_EXCEPTION_ERROR_CODE.equals(ase.awsErrorDetails().errorCode())) { // (3)
-            transformed = ProvisionedThroughputExceededException.builder().message(buildErrorMessage(ase));
+            transforming = ProvisionedThroughputExceededException.builder().message(buildErrorMessage(ase));
         } else if (ase instanceof TrimmedDataAccessException) { // (4)
             if (skipRecordsBehavior == AmazonDynamoDBStreamsAdapterClient.SkipRecordsBehavior.SKIP_RECORDS_TO_TRIM_HORIZON) {
-                ResourceNotFoundException.builder().message(buildErrorMessage(ase));
+                transforming = software.amazon.awssdk.services.kinesis.model.ResourceNotFoundException.builder().message(buildErrorMessage(ase));
             } else {
                 throw new UnableToReadMoreRecordsException(TRIMMED_DATA_KCL_RETRY_MESSAGE, ase);
             }
         }
-        return applyFields(ase, transformed);
+        return applyFields(ase, transforming);
     }
 
     /**
@@ -309,20 +312,20 @@ public class AmazonServiceExceptionTransformer {
      * <p>
      * The following transformations are applied: <br>
      * (1) InternalServerError <br>
-     * Amazon DynamoDB Streams: {@link com.amazonaws.services.dynamodbv2.model.InternalServerErrorException} <br>
-     * Amazon Kinesis: {@link com.amazonaws.AmazonServiceException} <br>
+     * Amazon DynamoDB Streams: {@link InternalServerErrorException} <br>
+     * Amazon Kinesis: {@link AwsServiceException} <br>
      * Notes: SDK relies on the 500 series StatusCode to identify that the issue was service side<br>
      * <br>
      * (2) ResourceNotFound<br>
-     * Amazon DynamoDB Streams: {@link com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException} <br>
+     * Amazon DynamoDB Streams: {@link ResourceNotFoundException} <br>
      * Amazon Kinesis: N/A <br>
      * Notes: A compatible transformation is to an AmazonServiceException with a 400 series StatusCode<br>
      * <br>
      * (3) ThrottlingException <br>
-     * Amazon DynamoDB Streams: {@link com.amazonaws.AmazonServiceException} with ErrorCode
+     * Amazon DynamoDB Streams: {@link AwsServiceException} with ErrorCode
      * {@value AmazonServiceExceptionTransformer#DYNAMODB_STREAMS_THROTTLING_EXCEPTION_ERROR_CODE}
      * <br>
-     * Amazon Kinesis: {@link com.amazonaws.services.kinesis.model.LimitExceededException} <br>
+     * Amazon Kinesis: {@link software.amazon.awssdk.services.kinesis.model.LimitExceededException} <br>
      * Notes: N/A<br>
      *
      * @param ase The Amazon DynamoDB Streams exception thrown by a ListStreams call
@@ -338,7 +341,7 @@ public class AmazonServiceExceptionTransformer {
         } else if (ase instanceof ResourceNotFoundException) { // (2)
             transforming = AwsServiceException.builder().message(buildErrorMessage(ase)).cause(ase);
         } else if (DYNAMODB_STREAMS_THROTTLING_EXCEPTION_ERROR_CODE.equals(ase.awsErrorDetails().errorCode())) { // (3)
-            transforming = LimitExceededException.builder().message(buildErrorMessage(ase));
+            transforming = software.amazon.awssdk.services.kinesis.model.LimitExceededException.builder().message(buildErrorMessage(ase));
         } else {
             transforming = null;
         }

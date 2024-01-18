@@ -5,6 +5,7 @@
  */
 package software.amazon.dynamo.streamsadapter;
 
+import java.util.concurrent.CompletableFuture;
 import software.amazon.dynamo.streamsadapter.model.ShardMapper;
 import software.amazon.dynamo.streamsadapter.utils.Sleeper;
 import software.amazon.dynamo.streamsadapter.utils.ThreadSleeper;
@@ -165,7 +166,8 @@ public class DynamoDBStreamsProxy implements ShardDetector {
         // Call DescribeStream, with backoff and retries (if we get LimitExceededException).
         while (response == null) {
             try {
-                response = client.describeStream(describeStreamRequest).join();
+                CompletableFuture<DescribeStreamResponse> resp = client.describeStream(describeStreamRequest);
+                response = resp.join();
             } catch (LimitExceededException le) {
                 LOG.info("Got LimitExceededException when describing stream " + streamIdentifier.streamName() + ". Backing off for "
                     + this.describeStreamBackoffTimeInMillis + " millis.");
@@ -262,24 +264,6 @@ public class DynamoDBStreamsProxy implements ShardDetector {
         this.shardGraph = new ShardGraph();
         return listOfShardsSinceLastGet.get();
     }
-
-    //@Override
-    //public synchronized List<Shard> getShardListWithFilter(ShardFilter shardFilter){
-    //
-    //    throw new UnsupportedOperationException("DynamoDB Streams does not support Shard List Filtering");
-    //}
-    //
-    //@Override
-    ///**
-    // * This method gets invoked from ShutdownTask when the shard consumer is shutting down.
-    // * Kinesis modified KCL to verify that the shard being closed has children, and this requires listing all shards.
-    // * Since DynamoDB streams can have a large number of shards, this verification delays shard closure, and can severely
-    // * degrade processing performance. For large streams, this can even cause stream processing to completely halt.
-    // * Therefore, we skip performing this validation in ShutdownTask by simply returning true.
-    // */
-    //public ShardClosureVerificationResponse verifyShardClosure(String shardId) {
-    //    return () -> true; // isShardClosed -> true
-    //}
 
     private ShardGraphProcessingResult buildShardGraphSnapshot() {
 

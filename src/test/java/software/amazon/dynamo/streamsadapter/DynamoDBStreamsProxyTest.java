@@ -5,10 +5,9 @@
  */
 package software.amazon.dynamo.streamsadapter;
 
-import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
-import com.amazonaws.services.dynamodbv2.xspec.NULL;
 import java.util.concurrent.CompletableFuture;
+import org.junit.runners.Parameterized.Parameters;
 import software.amazon.awssdk.services.dynamodb.model.SequenceNumberRange;
 import software.amazon.awssdk.services.kinesis.KinesisAsyncClient;
 import software.amazon.awssdk.services.kinesis.model.DescribeStreamRequest;
@@ -41,7 +40,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -77,9 +75,6 @@ public class DynamoDBStreamsProxyTest {
     private static final boolean NO_MORE_SHARDS = false;
 
     @Mock
-    private AWSCredentialsProvider mockAwsCredentialsProvider;
-
-    @Mock
     private KinesisAsyncClient mockKinesisClient;
 
     @Mock
@@ -96,7 +91,7 @@ public class DynamoDBStreamsProxyTest {
         this.isLeafParentOpen = isLeafParentOpen;
     }
 
-    @Parameterized.Parameters
+    @Parameters
     public static Collection<Object> getParameters() {
         Object[] params = {
                 false,     // Parent of the leaf node is closed. Expected state.
@@ -119,9 +114,9 @@ public class DynamoDBStreamsProxyTest {
                 .withInconsistencyResolutionRetryBackoffJitterEnabled(INCONSISTENCY_RESOLUTION_RETRY_BACKOFF_JITTER_ENABLED)
                 .withRandomNumberGeneratorForJitter(mockRandom)
                 .build();
-        when(mockRandom.nextDouble()).thenAnswer(new Answer() {
+        when(mockRandom.nextDouble()).thenAnswer(new Answer<Double>() {
             private int count = 0;
-            @Override public Object answer(InvocationOnMock invocation) {
+            @Override public Double answer(InvocationOnMock invocation) {
                 return RANDOM_SEQUENCE[count++];
             }
         });
@@ -559,16 +554,16 @@ public class DynamoDBStreamsProxyTest {
         nextShardList.add(nextShard);
         final DescribeStreamResponse describeStreamResult = getDescribeStreamResponse(shards, NO_MORE_SHARDS);
         final DescribeStreamResponse nextDescribeStreamResult = getDescribeStreamResponse(nextShardList, NO_MORE_SHARDS);
-        when(mockKinesisClient.describeStream(any(DescribeStreamRequest.class))).thenAnswer(new Answer() {
+        when(mockKinesisClient.describeStream(any(DescribeStreamRequest.class))).thenAnswer(new Answer<CompletableFuture<DescribeStreamResponse>>() {
             private int count = 0;
-            @Override public Object answer(InvocationOnMock invocation) {
+            @Override public CompletableFuture<DescribeStreamResponse> answer(InvocationOnMock invocation) {
                 if (count++ < numberOfInconsistentResults) {
-                    return describeStreamResult;
+                    return CompletableFuture.completedFuture(describeStreamResult);
                 }
                 if (!endWithConsistentGraph) {
-                    return describeStreamResult;
+                    return CompletableFuture.completedFuture(describeStreamResult);
                 } else {
-                    return nextDescribeStreamResult;
+                    return CompletableFuture.completedFuture(nextDescribeStreamResult);
                 }
             }
         });

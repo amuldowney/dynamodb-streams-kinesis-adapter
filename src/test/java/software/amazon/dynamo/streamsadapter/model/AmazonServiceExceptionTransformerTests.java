@@ -5,23 +5,27 @@
  */
 package software.amazon.dynamo.streamsadapter.model;
 
+import java.util.concurrent.ExecutionException;
+import javax.annotation.Nullable;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Matchers;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.services.dynamodb.model.DescribeStreamRequest;
+import software.amazon.awssdk.services.dynamodb.model.ExpiredIteratorException;
 import software.amazon.awssdk.services.dynamodb.model.GetRecordsRequest;
 import software.amazon.awssdk.services.dynamodb.model.InternalServerErrorException;
+import software.amazon.awssdk.services.dynamodb.model.LimitExceededException;
 import software.amazon.awssdk.services.dynamodb.model.ListStreamsRequest;
+import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughputExceededException;
+import software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException;
+import software.amazon.awssdk.services.dynamodb.model.TrimmedDataAccessException;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
-import software.amazon.awssdk.services.kinesis.model.ExpiredIteratorException;
 import software.amazon.awssdk.services.kinesis.model.GetShardIteratorRequest;
-import software.amazon.awssdk.services.kinesis.model.LimitExceededException;
-import software.amazon.awssdk.services.kinesis.model.ProvisionedThroughputExceededException;
-import software.amazon.awssdk.services.kinesis.model.ResourceNotFoundException;
 import software.amazon.awssdk.services.kinesis.model.ShardIteratorType;
 import software.amazon.dynamo.streamsadapter.AmazonDynamoDBStreamsAdapterClient;
 import software.amazon.dynamo.streamsadapter.AmazonDynamoDBStreamsAdapterClient.SkipRecordsBehavior;
@@ -30,6 +34,7 @@ import software.amazon.dynamo.streamsadapter.exceptions.UnableToReadMoreRecordsE
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -98,16 +103,23 @@ public class AmazonServiceExceptionTransformerTests extends AmazonServiceExcepti
    */
   private static AwsServiceException setFields(AwsServiceException.Builder ase, String errorCode,
       String requestId, String serviceName, int statusCode) {
+    //Always set an ErrorDetails object
+    ase= ase.awsErrorDetails(getDetailsBuilder(ase.awsErrorDetails()).build());
+
     if (errorCode != null) {
-      ase = ase.awsErrorDetails(ase.awsErrorDetails().toBuilder().errorCode(errorCode).build());
+      ase = ase.awsErrorDetails(getDetailsBuilder(ase.awsErrorDetails()).errorCode(errorCode).build());
     }
     if (requestId != null) {
       ase = ase.requestId(requestId);
     }
     if (serviceName != null) {
-      ase = ase.awsErrorDetails(ase.awsErrorDetails().toBuilder().serviceName(serviceName).build());
+      ase = ase.awsErrorDetails(getDetailsBuilder(ase.awsErrorDetails()).serviceName(serviceName).build());
     }
     return ase.statusCode(statusCode).build();
+  }
+
+  private static AwsErrorDetails.Builder getDetailsBuilder(@Nullable AwsErrorDetails aed) {
+    return aed == null ? AwsErrorDetails.builder() : aed.toBuilder();
   }
 
   @Before
@@ -124,11 +136,13 @@ public class AmazonServiceExceptionTransformerTests extends AmazonServiceExcepti
       adapterClient.describeStream(
           software.amazon.awssdk.services.kinesis.model.DescribeStreamRequest.builder()
               .streamName(STREAM_NAME)
-              .build());
+              .build()).get();
       fail("Expected " + expectedResult.getCanonicalName());
-    } catch (AwsServiceException e) {
-      assertEquals(expectedResult, e.getClass());
-      assertSameExceptionProperties(ase, e);
+    } catch (ExecutionException ee) {
+      assertTrue(ee.getCause() instanceof AwsServiceException);
+      AwsServiceException aswe = (AwsServiceException) ee.getCause();
+      assertEquals(expectedResult, aswe.getClass());
+      assertSameExceptionProperties(ase, aswe);
     }
     verify(streams, Mockito.times(1)).describeStream(Matchers.any(DescribeStreamRequest.class));
   }
@@ -143,12 +157,15 @@ public class AmazonServiceExceptionTransformerTests extends AmazonServiceExcepti
       adapterClient.getRecords(
           software.amazon.awssdk.services.kinesis.model.GetRecordsRequest.builder()
               .shardIterator(SHARD_ITERATOR)
-              .build());
+              .build()).get();
       fail("Expected " + expectedResult.getCanonicalName());
-    } catch (RuntimeException e) {
-      assertEquals(expectedResult, e.getClass());
-      if (e instanceof AwsServiceException) {
-        assertSameExceptionProperties(ase, (AwsServiceException) e);
+    }  catch (ExecutionException ee) {
+      assertTrue(ee.getCause() instanceof RuntimeException);
+      RuntimeException aswe = (RuntimeException) ee.getCause();
+
+      assertEquals(expectedResult, aswe.getClass());
+      if (aswe instanceof AwsServiceException) {
+        assertSameExceptionProperties(ase, (AwsServiceException) aswe);
       }
     }
     verify(streams, Mockito.times(1)).getRecords(Matchers.any(GetRecordsRequest.class));
@@ -169,12 +186,15 @@ public class AmazonServiceExceptionTransformerTests extends AmazonServiceExcepti
               .shardId(SHARD_ID)
               .shardIteratorType(ShardIteratorType.AT_SEQUENCE_NUMBER)
               .startingSequenceNumber(SEQUENCE_NUMBER)
-              .build());
+              .build()).get();
       fail("Expected " + expectedResult.getCanonicalName());
-    } catch (RuntimeException e) {
-      assertEquals(expectedResult, e.getClass());
-      if (e instanceof AwsServiceException) {
-        assertSameExceptionProperties(ase, (AwsServiceException) e);
+    } catch (ExecutionException ee) {
+      assertTrue(ee.getCause() instanceof RuntimeException);
+      RuntimeException aswe = (RuntimeException) ee.getCause();
+
+      assertEquals(expectedResult, aswe.getClass());
+      if (aswe instanceof AwsServiceException) {
+        assertSameExceptionProperties(ase, (AwsServiceException) aswe);
       }
     }
     verify(streams, Mockito.times(numCalls)).getShardIterator(Matchers.any(
@@ -182,16 +202,18 @@ public class AmazonServiceExceptionTransformerTests extends AmazonServiceExcepti
   }
 
   private void doListStreamsTest(AwsServiceException ase, Class<?> expectedResult)
-      throws Exception {
+      throws InterruptedException {
     when(streams.listStreams(Matchers.any(ListStreamsRequest.class))).thenThrow(ase);
     AmazonDynamoDBStreamsAdapterClient adapterClient =
         new AmazonDynamoDBStreamsAdapterClient(streams);
     try {
-      adapterClient.listStreams();
+      adapterClient.listStreams().get();
       fail("Expected " + expectedResult.getCanonicalName());
-    } catch (AwsServiceException e) {
-      assertEquals(expectedResult, e.getClass());
-      assertSameExceptionProperties(ase, e);
+    } catch (ExecutionException ee) {
+      assertTrue(ee.getCause() instanceof AwsServiceException);
+      AwsServiceException aswe = (AwsServiceException) ee.getCause();
+      assertEquals(expectedResult, aswe.getClass());
+      assertSameExceptionProperties(ase, aswe);
     }
     verify(streams, Mockito.times(1)).listStreams(Matchers.any(ListStreamsRequest.class));
   }
@@ -201,7 +223,7 @@ public class AmazonServiceExceptionTransformerTests extends AmazonServiceExcepti
     AwsServiceException.Builder iseB = InternalServerErrorException.builder().message(TEST_MESSAGE);
     AwsServiceException ise =
         setFields(iseB, INTERNAL_FAILURE, REQUEST_ID, SERVICE_NAME, STATUS_CODE_500);
-    doDescribeStreamTest(ise, com.amazonaws.AmazonServiceException.class);
+    doDescribeStreamTest(ise, AwsServiceException.class);
   }
 
   @Test
@@ -210,7 +232,7 @@ public class AmazonServiceExceptionTransformerTests extends AmazonServiceExcepti
     AwsServiceException.Builder exceptionB = ProvisionedThroughputExceededException.builder();
     AwsServiceException exception = setFields(exceptionB, null, null, null, STATUS_CODE_400);
     doDescribeStreamTest(exception,
-        com.amazonaws.services.dynamodbv2.model.ProvisionedThroughputExceededException.class);
+        software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughputExceededException.class);
   }
 
   @Test()
@@ -218,7 +240,7 @@ public class AmazonServiceExceptionTransformerTests extends AmazonServiceExcepti
     ResourceNotFoundException.Builder rnfeB = ResourceNotFoundException.builder();
     AwsServiceException rnfe =
         setFields(rnfeB, RESOURCE_NOT_FOUND, REQUEST_ID, SERVICE_NAME, STATUS_CODE_400);
-    doDescribeStreamTest(rnfe, ResourceNotFoundException.class);
+    doDescribeStreamTest(rnfe, software.amazon.awssdk.services.kinesis.model.ResourceNotFoundException.class);
   }
 
   @Test()
@@ -226,7 +248,7 @@ public class AmazonServiceExceptionTransformerTests extends AmazonServiceExcepti
     AwsServiceException.Builder teB = AwsServiceException.builder().message(TEST_MESSAGE);
     AwsServiceException te =
         setFields(teB, THROTTLING_EXCEPTION, REQUEST_ID, SERVICE_NAME, STATUS_CODE_400);
-    doDescribeStreamTest(te, LimitExceededException.class);
+    doDescribeStreamTest(te, software.amazon.awssdk.services.kinesis.model.LimitExceededException.class);
   }
 
   @Test
@@ -241,7 +263,7 @@ public class AmazonServiceExceptionTransformerTests extends AmazonServiceExcepti
     AwsServiceException.Builder eieB = ExpiredIteratorException.builder().message(TEST_MESSAGE);
     AwsServiceException eie =
         setFields(eieB, INTERNAL_FAILURE, REQUEST_ID, SERVICE_NAME, STATUS_CODE_400);
-    doGetRecordsTest(eie, ExpiredIteratorException.class,
+    doGetRecordsTest(eie, software.amazon.awssdk.services.kinesis.model.ExpiredIteratorException.class,
         SkipRecordsBehavior.SKIP_RECORDS_TO_TRIM_HORIZON);
   }
 
@@ -259,7 +281,7 @@ public class AmazonServiceExceptionTransformerTests extends AmazonServiceExcepti
     // Not thrown by DynamoDB Streams
     AwsServiceException.Builder exceptionB = ProvisionedThroughputExceededException.builder();
     AwsServiceException exception = setFields(exceptionB, null, null, null, STATUS_CODE_400);
-    doGetRecordsTest(exception, ProvisionedThroughputExceededException.class,
+    doGetRecordsTest(exception, software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughputExceededException.class,
         SkipRecordsBehavior.SKIP_RECORDS_TO_TRIM_HORIZON);
   }
 
@@ -268,7 +290,7 @@ public class AmazonServiceExceptionTransformerTests extends AmazonServiceExcepti
     LimitExceededException.Builder teB = LimitExceededException.builder().message(TEST_MESSAGE);
     AwsServiceException te =
         setFields(teB, LIMIT_EXCEEDED_EXCEPTION, REQUEST_ID, SERVICE_NAME, STATUS_CODE_400);
-    doGetRecordsTest(te, ProvisionedThroughputExceededException.class,
+    doGetRecordsTest(te, software.amazon.awssdk.services.kinesis.model.ProvisionedThroughputExceededException.class,
         SkipRecordsBehavior.SKIP_RECORDS_TO_TRIM_HORIZON);
   }
 
@@ -277,7 +299,7 @@ public class AmazonServiceExceptionTransformerTests extends AmazonServiceExcepti
     ResourceNotFoundException.Builder rnfeB = ResourceNotFoundException.builder();
     AwsServiceException rnfe =
         setFields(rnfeB, RESOURCE_NOT_FOUND, REQUEST_ID, SERVICE_NAME, STATUS_CODE_400);
-    doGetRecordsTest(rnfe, ResourceNotFoundException.class, SkipRecordsBehavior.KCL_RETRY);
+    doGetRecordsTest(rnfe, software.amazon.awssdk.services.kinesis.model.ResourceNotFoundException.class, SkipRecordsBehavior.KCL_RETRY);
   }
 
   @Test()
@@ -285,7 +307,7 @@ public class AmazonServiceExceptionTransformerTests extends AmazonServiceExcepti
     ResourceNotFoundException.Builder rnfeB = ResourceNotFoundException.builder();
     AwsServiceException rnfe =
         setFields(rnfeB, RESOURCE_NOT_FOUND, REQUEST_ID, SERVICE_NAME, STATUS_CODE_400);
-    doGetRecordsTest(rnfe, ResourceNotFoundException.class,
+    doGetRecordsTest(rnfe, software.amazon.awssdk.services.kinesis.model.ResourceNotFoundException.class,
         SkipRecordsBehavior.SKIP_RECORDS_TO_TRIM_HORIZON);
   }
 
@@ -294,39 +316,39 @@ public class AmazonServiceExceptionTransformerTests extends AmazonServiceExcepti
     AwsServiceException.Builder teB = AwsServiceException.builder().message(TEST_MESSAGE);
     AwsServiceException te =
         setFields(teB, THROTTLING_EXCEPTION, REQUEST_ID, SERVICE_NAME, STATUS_CODE_400);
-    doGetRecordsTest(te, ProvisionedThroughputExceededException.class,
+    doGetRecordsTest(te, software.amazon.awssdk.services.kinesis.model.ProvisionedThroughputExceededException.class,
         SkipRecordsBehavior.SKIP_RECORDS_TO_TRIM_HORIZON);
   }
 
-  //@Test()
-  //public void testGetRecordsTrimmedDataAccessExceptionKCLRetry() throws Exception {
-  //    TrimmedDataAccessException.Builder tdae = new TrimmedDataAccessException(TEST_MESSAGE);
-  //    setFields(tdae, TRIMMED_DATA_ACCESS_EXCEPTION, REQUEST_ID, SERVICE_NAME, STATUS_CODE_400);
-  //    doGetRecordsTest(tdae, UnableToReadMoreRecordsException.class, SkipRecordsBehavior.KCL_RETRY);
-  //}
-  //
-  //@Test()
-  //public void testGetRecordsTrimmedDataAccessExceptionSkipRecords() throws Exception {
-  //    TrimmedDataAccessException tdae = new TrimmedDataAccessException(TEST_MESSAGE);
-  //    setFields(tdae, TRIMMED_DATA_ACCESS_EXCEPTION, REQUEST_ID, SERVICE_NAME, STATUS_CODE_400);
-  //    doGetRecordsTest(tdae, com.amazonaws.services.kinesis.model.ExpiredIteratorException.class, SkipRecordsBehavior.SKIP_RECORDS_TO_TRIM_HORIZON);
-  //}
-  //
-  //@Test
-  //public void testGetShardIteratorInternalServerErrorException() throws Exception {
-  //    InternalServerErrorException ise = new InternalServerErrorException(TEST_MESSAGE);
-  //    setFields(ise, INTERNAL_FAILURE, REQUEST_ID, SERVICE_NAME, STATUS_CODE_500);
-  //    doGetShardIteratorTest(ise, com.amazonaws.AmazonServiceException.class, SkipRecordsBehavior.SKIP_RECORDS_TO_TRIM_HORIZON, 1);
-  //}
-  //
-  //@Test
-  //public void testGetShardIteratorIrrelevantException() throws Exception {
-  //    // Not thrown by DynamoDB Streams
-  //    ProvisionedThroughputExceededException exception = new ProvisionedThroughputExceededException(null);
-  //    setFields(exception, null, null, null, STATUS_CODE_400);
-  //    doGetShardIteratorTest(exception, com.amazonaws.services.dynamodbv2.model.ProvisionedThroughputExceededException.class, SkipRecordsBehavior.SKIP_RECORDS_TO_TRIM_HORIZON,
-  //        1);
-  //}
+  @Test()
+  public void testGetRecordsTrimmedDataAccessExceptionKCLRetry() throws Exception {
+      TrimmedDataAccessException.Builder tdaeB = TrimmedDataAccessException.builder().message(TEST_MESSAGE);
+    AwsServiceException tdae = setFields(tdaeB, TRIMMED_DATA_ACCESS_EXCEPTION, REQUEST_ID, SERVICE_NAME, STATUS_CODE_400);
+      doGetRecordsTest(tdae, UnableToReadMoreRecordsException.class, SkipRecordsBehavior.KCL_RETRY);
+  }
+
+  @Test()
+  public void testGetRecordsTrimmedDataAccessExceptionSkipRecords() throws Exception {
+    TrimmedDataAccessException.Builder tdaeB = TrimmedDataAccessException.builder().message(TEST_MESSAGE);
+    AwsServiceException tdae = setFields(tdaeB, TRIMMED_DATA_ACCESS_EXCEPTION, REQUEST_ID, SERVICE_NAME, STATUS_CODE_400);
+      doGetRecordsTest(tdae, software.amazon.awssdk.services.kinesis.model.ExpiredIteratorException.class, SkipRecordsBehavior.SKIP_RECORDS_TO_TRIM_HORIZON);
+  }
+
+  @Test
+  public void testGetShardIteratorInternalServerErrorException() throws Exception {
+    AwsServiceException.Builder iseB = InternalServerErrorException.builder().message(TEST_MESSAGE);
+    AwsServiceException ise = setFields(iseB,  INTERNAL_FAILURE, REQUEST_ID, SERVICE_NAME, STATUS_CODE_500);
+      doGetShardIteratorTest(ise, AwsServiceException.class, SkipRecordsBehavior.SKIP_RECORDS_TO_TRIM_HORIZON, 1);
+  }
+
+  @Test
+  public void testGetShardIteratorIrrelevantException() throws Exception {
+      // Not thrown by DynamoDB Streams
+    AwsServiceException.Builder exceptionB = ProvisionedThroughputExceededException.builder();
+    AwsServiceException exception = setFields(exceptionB, null, null, null, STATUS_CODE_400);
+      doGetShardIteratorTest(exception, ProvisionedThroughputExceededException.class, SkipRecordsBehavior.SKIP_RECORDS_TO_TRIM_HORIZON,
+          1);
+  }
 
   @Test()
   public void testGetShardIteratorResourceNotFoundExceptionKCLRetry() throws Exception {
@@ -342,59 +364,59 @@ public class AmazonServiceExceptionTransformerTests extends AmazonServiceExcepti
     ResourceNotFoundException.Builder rnfeB = ResourceNotFoundException.builder();
     AwsServiceException rnfe =
         setFields(rnfeB, RESOURCE_NOT_FOUND, REQUEST_ID, SERVICE_NAME, STATUS_CODE_400);
-    doGetShardIteratorTest(rnfe, ResourceNotFoundException.class,
+    doGetShardIteratorTest(rnfe, software.amazon.awssdk.services.kinesis.model.ResourceNotFoundException.class,
         SkipRecordsBehavior.SKIP_RECORDS_TO_TRIM_HORIZON, 1);
   }
 
-  //@Test()
-  //public void testGetShardIteratorThrottlingException() throws Exception {
-  //    AmazonServiceException te = new AmazonServiceException(TEST_MESSAGE);
-  //    setFields(te, THROTTLING_EXCEPTION, REQUEST_ID, SERVICE_NAME, STATUS_CODE_400);
-  //    doGetShardIteratorTest(te, com.amazonaws.services.kinesis.model.ProvisionedThroughputExceededException.class, SkipRecordsBehavior.SKIP_RECORDS_TO_TRIM_HORIZON, 1);
-  //}
-  //
-  //@Test()
-  //public void testGetShardIteratorTrimmedDataAccessExceptionKCLRetry() throws Exception {
-  //    TrimmedDataAccessException tdae = new TrimmedDataAccessException(TEST_MESSAGE);
-  //    setFields(tdae, TRIMMED_DATA_ACCESS_EXCEPTION, REQUEST_ID, SERVICE_NAME, STATUS_CODE_400);
-  //    doGetShardIteratorTest(tdae, UnableToReadMoreRecordsException.class, SkipRecordsBehavior.KCL_RETRY, 1);
-  //}
-  //
-  //@Test()
-  //public void testGetShardIteratorTrimmedDataAccessExceptionSkipRecords() throws Exception {
-  //    TrimmedDataAccessException tdae = new TrimmedDataAccessException(TEST_MESSAGE);
-  //    setFields(tdae, TRIMMED_DATA_ACCESS_EXCEPTION, REQUEST_ID, SERVICE_NAME, STATUS_CODE_400);
-  //    doGetShardIteratorTest(tdae, ResourceNotFoundException.class, SkipRecordsBehavior.SKIP_RECORDS_TO_TRIM_HORIZON, 2);
-  //}
-  //
-  //@Test
-  //public void testListStreamsInternalServerErrorException() throws Exception {
-  //    InternalServerErrorException ise = new InternalServerErrorException(TEST_MESSAGE);
-  //    setFields(ise, INTERNAL_FAILURE, REQUEST_ID, SERVICE_NAME, STATUS_CODE_500);
-  //    doListStreamsTest(ise, com.amazonaws.AmazonServiceException.class);
-  //}
-  //
-  //@Test
-  //public void testListStreamsIrrelevantException() throws Exception {
-  //    // Not thrown by DynamoDB Streams
-  //    ProvisionedThroughputExceededException exception = new ProvisionedThroughputExceededException(null);
-  //    setFields(exception, null, null, null, STATUS_CODE_400);
-  //    doListStreamsTest(exception, com.amazonaws.services.dynamodbv2.model.ProvisionedThroughputExceededException.class);
-  //}
-  //
-  //@Test
-  //public void testListStreamsResourceNotFoundException() throws Exception {
-  //    ResourceNotFoundException.Builder rnfeB = ResourceNotFoundException.builder();
-  //    AwsServiceException rnfe =  setFields(rnfeB, RESOURCE_NOT_FOUND, REQUEST_ID, SERVICE_NAME, STATUS_CODE_400);
-  //    doListStreamsTest(rnfe, com.amazonaws.AmazonServiceException.class);
-  //}
-  //
-  //@Test
-  //public void testListStreamsThrottlingException() throws Exception {
-  //    AmazonServiceException te = new AmazonServiceException(TEST_MESSAGE);
-  //    setFields(te, THROTTLING_EXCEPTION, REQUEST_ID, SERVICE_NAME, STATUS_CODE_400);
-  //    doListStreamsTest(te, com.amazonaws.services.kinesis.model.LimitExceededException.class);
-  //}
+  @Test()
+  public void testGetShardIteratorThrottlingException() throws Exception {
+      AwsServiceException.Builder teB = AwsServiceException.builder().message  (TEST_MESSAGE);
+    AwsServiceException te =  setFields(teB, THROTTLING_EXCEPTION, REQUEST_ID, SERVICE_NAME, STATUS_CODE_400);
+      doGetShardIteratorTest(te, software.amazon.awssdk.services.kinesis.model.ProvisionedThroughputExceededException.class, SkipRecordsBehavior.SKIP_RECORDS_TO_TRIM_HORIZON, 1);
+  }
+
+  @Test()
+  public void testGetShardIteratorTrimmedDataAccessExceptionKCLRetry() throws Exception {
+    TrimmedDataAccessException.Builder tdaeB = TrimmedDataAccessException.builder().message(TEST_MESSAGE);
+    AwsServiceException tdae = setFields(tdaeB, TRIMMED_DATA_ACCESS_EXCEPTION, REQUEST_ID, SERVICE_NAME, STATUS_CODE_400);
+      doGetShardIteratorTest(tdae, UnableToReadMoreRecordsException.class, SkipRecordsBehavior.KCL_RETRY, 1);
+  }
+
+  @Test()
+  public void testGetShardIteratorTrimmedDataAccessExceptionSkipRecords() throws Exception {
+    TrimmedDataAccessException.Builder tdaeB = TrimmedDataAccessException.builder().message(TEST_MESSAGE);
+    AwsServiceException tdae = setFields(tdaeB, TRIMMED_DATA_ACCESS_EXCEPTION, REQUEST_ID, SERVICE_NAME, STATUS_CODE_400);
+      doGetShardIteratorTest(tdae, software.amazon.awssdk.services.kinesis.model.ResourceNotFoundException.class, SkipRecordsBehavior.SKIP_RECORDS_TO_TRIM_HORIZON, 2);
+  }
+
+  @Test
+  public void testListStreamsInternalServerErrorException() throws Exception {
+    AwsServiceException.Builder iseB = InternalServerErrorException.builder().message(TEST_MESSAGE);
+    AwsServiceException ise = setFields(iseB, INTERNAL_FAILURE, REQUEST_ID, SERVICE_NAME, STATUS_CODE_500);
+      doListStreamsTest(ise, AwsServiceException.class);
+  }
+
+  @Test
+  public void testListStreamsIrrelevantException() throws Exception {
+      // Not thrown by DynamoDB Streams
+    AwsServiceException.Builder exceptionB = ProvisionedThroughputExceededException.builder();
+    AwsServiceException exception = setFields(exceptionB, null, null, null, STATUS_CODE_400);
+      doListStreamsTest(exception, ProvisionedThroughputExceededException.class);
+  }
+
+  @Test
+  public void testListStreamsResourceNotFoundException() throws Exception {
+      ResourceNotFoundException.Builder rnfeB = ResourceNotFoundException.builder();
+      AwsServiceException rnfe =  setFields(rnfeB, RESOURCE_NOT_FOUND, REQUEST_ID, SERVICE_NAME, STATUS_CODE_400);
+      doListStreamsTest(rnfe, AwsServiceException.class);
+  }
+
+  @Test
+  public void testListStreamsThrottlingException() throws Exception {
+    AwsServiceException.Builder teB = AwsServiceException.builder().message  (TEST_MESSAGE);
+    AwsServiceException te =  setFields(teB, THROTTLING_EXCEPTION, REQUEST_ID, SERVICE_NAME, STATUS_CODE_400);
+      doListStreamsTest(te, software.amazon.awssdk.services.kinesis.model.LimitExceededException.class);
+  }
 
   @Test
   public void testNullException() {

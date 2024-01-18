@@ -161,6 +161,10 @@
 
     <developers>
         <developer>
+            <name>Andrew Muldowney</name>
+            <email>amuldowney@squareup.com</email>
+        </developer>
+        <developer>
             <name>Parijat Sinha</name>
             <email>parijas@amazon.com</email>
         </developer>
