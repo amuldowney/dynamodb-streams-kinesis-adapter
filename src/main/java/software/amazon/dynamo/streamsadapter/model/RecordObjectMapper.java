@@ -8,6 +8,7 @@ package software.amazon.dynamo.streamsadapter.model;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.datatype.jsr310.deser.InstantDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.InstantSerializer;
 import java.io.IOException;
@@ -82,15 +83,16 @@ public class RecordObjectMapper extends ObjectMapper {
         module.addSerializer(Instant.class, InstantSerializer.INSTANCE);
         module.addDeserializer(Instant.class, InstantDeserializer.INSTANT);
 
+
         // Don't serialize things that are null
         this.setSerializationInclusion(JsonInclude.Include.NON_DEFAULT);
         this.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
 
-        this.registerModule(module);
-
         this.addMixIn(Record.class, DynamoRecordMixIn.class);
         this.addMixIn(StreamRecord.class, StreamRecordMixIn.class);
         this.addMixIn(AttributeValue.class, AttributeValueMixIn.class);
+
+        this.registerModule(module);
     }
 
     /*
@@ -113,7 +115,7 @@ public class RecordObjectMapper extends ObjectMapper {
         }
     }
 
-
+    @JsonDeserialize(builder = Record.Builder.class)
     private static abstract class DynamoRecordMixIn {
         @JsonProperty(EVENT_ID)
         public abstract String getEventID();

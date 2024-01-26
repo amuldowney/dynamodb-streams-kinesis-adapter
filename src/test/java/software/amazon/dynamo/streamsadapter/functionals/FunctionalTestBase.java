@@ -70,6 +70,7 @@ public abstract class FunctionalTestBase {
         dynamoDBClient = dynamoDBLocal.dynamoDbClient();
         dynamoDBAsyncClient = dynamoDBLocal.dynamoDbAsyncClient();
         streamsClient = dynamoDBLocal.dynamoDbStreamsClient();
+        dynamoDBLocal.triggerShardRollovers();
 
         adapterClient = new AmazonDynamoDBStreamsAdapterClient(streamsClient);
 

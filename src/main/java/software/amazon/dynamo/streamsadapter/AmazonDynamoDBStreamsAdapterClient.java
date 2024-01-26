@@ -44,11 +44,7 @@ import software.amazon.awssdk.services.kinesis.model.ListStreamsResponse;
  * Client for accessing DynamoDB Streams using the Amazon Kinesis interface.
  */
 public class AmazonDynamoDBStreamsAdapterClient implements KinesisAsyncClient {
-
-
-    private static final int REQUEST_CACHE_CAPACITY = 50;
-
-    private static final Log LOG = LogFactory.getLog(AmazonDynamoDBStreamsAdapterClient.class);
+      private static final Log LOG = LogFactory.getLog(AmazonDynamoDBStreamsAdapterClient.class);
 
     private final DynamoDbStreamsClient internalClient;
 

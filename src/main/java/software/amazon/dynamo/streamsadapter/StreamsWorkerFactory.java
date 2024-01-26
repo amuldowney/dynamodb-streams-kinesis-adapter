@@ -52,6 +52,7 @@ public class StreamsWorkerFactory {
       ExecutorService executorService) {
     //todo UUID??
 
+    DynamoDBStreamsProxy dynamoDBStreamsProxy = getDynamoDBStreamsProxy(config, streamsClient);
     InitialPositionInStreamExtended initialPositionInStreamExtended = InitialPositionInStreamExtended.newInitialPosition(config.getInitialPositionInStream());
 
     ConfigsBuilder configsBuilder =
@@ -59,17 +60,13 @@ public class StreamsWorkerFactory {
             dynamoDBClient, cloudWatchClient, UUID.randomUUID().toString(),
             shardRecordProcessorFactory);
 
-    //ConfigsBuilder construction is garbage so we have to do our own overlay of the KinesisClientLibConfiguration
+    //ConfigsBuilder construction is garbage so we have to do our own overlay of parts of the KinesisClientLibConfiguration
     //  .withCallProcessRecordsEvenForEmptyRecordList(true).withIdleTimeBetweenReadsInMillis(IDLE_TIME_2S);
 
-    configsBuilder.leaseManagementConfig().shardSyncIntervalMillis(config.getShardSyncIntervalMillis());
-
-    configsBuilder.leaseManagementConfig().initialLeaseTableReadCapacity(config.getInitialLeaseTableReadCapacity());
-    configsBuilder.leaseManagementConfig().initialLeaseTableWriteCapacity(config.getInitialLeaseTableWriteCapacity());
-
-    DynamoDBStreamsProxy dynamoDBStreamsProxy = getDynamoDBStreamsProxy(config, streamsClient);
-
     LeaseManagementConfig lmc = configsBuilder.leaseManagementConfig();
+    lmc = lmc.initialLeaseTableReadCapacity(config.getInitialLeaseTableReadCapacity());
+    lmc = lmc.initialLeaseTableWriteCapacity(config.getInitialLeaseTableWriteCapacity());
+    lmc = lmc.shardSyncIntervalMillis(config.getShardSyncIntervalMillis());
     lmc = lmc.customShardDetectorProvider(cfg -> dynamoDBStreamsProxy);
 
     DynamoDBStreamsLeaseManagementFactory dynamoDBStreamsLeaseManagementFactory =
